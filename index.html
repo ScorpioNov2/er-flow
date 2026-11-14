@@ -29,14 +29,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
 svg.ic{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
-/* PNG icon with graceful inline-SVG fallback (drop files into /icons to override) */
 .ic-pair{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex:none}
 .ic-pair img{width:16px;height:16px;object-fit:contain;display:block}
 .ic-pair img.failed{display:none}
 .ic-pair .fb{display:none;width:16px;height:16px}
 .ic-pair img.failed ~ .fb{display:block}
 
-/* ── Topbar ─────────────────────────── */
+/* ── Topbar ────────────────────────── */
 .topbar{position:relative;z-index:60;height:58px;display:flex;align-items:center;gap:14px;padding:0 14px;
   background:linear-gradient(180deg,#0c1120,#080c17);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
@@ -82,16 +81,24 @@ aside{width:382px;flex:none;display:flex;flex-direction:column;min-height:0;back
 .mini{display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--line2);
   background:#0c1222;font:600 11.5px "Be Vietnam Pro";text-transform:none;white-space:nowrap;line-height:1;transition:.15s}
 .mini:hover{border-color:var(--purple);box-shadow:0 0 10px rgba(150,37,237,.35)}
-#btnReset{margin-left:auto;height:30px;flex:none}
+.mini.ghost{color:var(--blue);border-color:#239dd155}
+.mini.ghost:hover{border-color:var(--blue);box-shadow:0 0 10px rgba(35,157,209,.35)}
+
+/* editor header: centered title on its own line, two buttons on a row beneath */
+.editor-head{flex-direction:column;align-items:stretch;gap:10px;flex-wrap:nowrap}
+.eh-title{display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;width:100%}
+.eh-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;width:100%}
+.eh-actions .mini{margin-left:0}
 
 /* editor */
 .sec-editor{flex:1.05 1 46%;min-height:210px;border-bottom:1px solid var(--line)}
 .code-wrap{position:relative;flex:1;min-height:0;background:#070b14}
-/* integer font-size + line-height → caret and highlight never drift apart */
+/* integer metrics + fixed-height line blocks → caret can never drift between lines */
 .code-wrap pre,.code-wrap textarea{
   position:absolute;inset:0;padding:12px 14px;font:500 13px/21px "JetBrains Mono",Consolas,monospace;
   white-space:pre;tab-size:4;letter-spacing:0;border:0;font-variant-ligatures:none}
 .code-wrap pre{overflow:hidden;pointer-events:none;color:#dfe7fb}
+.code-wrap pre .cl{height:21px;line-height:21px;white-space:pre;overflow:visible}
 .code-wrap textarea{overflow:auto;resize:none;background:transparent;color:transparent;caret-color:var(--yellow);outline:none}
 .code-wrap textarea::selection{background:rgba(35,157,209,.3);color:transparent}
 .tok-kw{color:#9625ed;font-weight:700}
@@ -284,17 +291,18 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
 <main>
   <aside id="panel">
     <section class="p-sec sec-editor">
-      <div class="p-head">
-        <span class="p-title">
-          <span class="ic-pair"><img src="icons/mermaid.png" alt="" onerror="this.classList.add('failed')"><svg class="ic fb" viewBox="0 0 24 24"><path d="M9 6 4 12l5 6M15 6l5 6-5 6"/></svg></span>
-          Mermaid Code
-        </span>
-        <span class="sp"></span>
-        <button class="linkbtn" id="btnSeed">Restore Sample</button>
-        <button class="mini" id="btnReset">
-          <span class="ic-pair"><img src="icons/reset.png" alt="" onerror="this.classList.add('failed')"><svg class="ic fb" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v5h-5"/></svg></span>
-          Update Diagram (Reset)
-        </button>
+      <div class="p-head editor-head">
+        <div class="eh-title">
+          <span class="ic-pair"><img src="icons/mermaid.png" alt="" onerror="this.classList.add('failed')"><svg class="ic fb" viewBox="0 0 24 24"><path d="M8 6 3 12l5 6M16 6l5 6-5 6M13.5 5l-3 14"/></svg></span>
+          <span>Mermaid Code</span>
+        </div>
+        <div class="eh-actions">
+          <button class="mini ghost" id="btnSeed">Restore Sample</button>
+          <button class="mini" id="btnReset">
+            <span class="ic-pair"><img src="icons/reset.png" alt="" onerror="this.classList.add('failed')"><svg class="ic fb" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v5h-5"/></svg></span>
+            Update Diagram (Reset)
+          </button>
+        </div>
       </div>
       <div class="code-wrap">
         <pre id="hl" aria-hidden="true"></pre>
@@ -545,11 +553,13 @@ function parse(src){
   return {tables,rels,errors,used};
 }
 
-/* ═══════════════ EDITOR HIGHLIGHT ═══════════════ */
+/* ═══════════════ EDITOR HIGHLIGHT ═══════════════
+   Each source line is emitted as a fixed-height block so the highlight
+   grid can never drift away from the textarea's own caret grid.        */
 function highlight(src,used){
   const entCls=n=>used.has(n)?"tok-ent":"tok-unused";
   let block=false;
-  return src.split("\n").map(raw=>{
+  const lines=src.split("\n").map(raw=>{
     let code=raw,com="";
     let inQ=false;
     for(let i=0;i<raw.length-1;i++){ const c=raw[i];
@@ -591,7 +601,8 @@ function highlight(src,used){
       return html+comHtml;
     }
     return esc(code)+comHtml;
-  }).join("\n")+"\n";
+  });
+  return lines.map(h=>`<div class="cl">${h}</div>`).join("")+`<div class="cl"></div>`;
 }
 function refreshHL(){ hlPre.innerHTML=highlight(ta.value,state.used); hlPre.scrollTop=ta.scrollTop; hlPre.scrollLeft=ta.scrollLeft; }
 ta.addEventListener("scroll",()=>{hlPre.scrollTop=ta.scrollTop;hlPre.scrollLeft=ta.scrollLeft;});
