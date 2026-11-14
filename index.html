@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ER Flow — Trình Đọc Cú Pháp Mermaid ER · Bắt Cạnh Thông Minh</title>
+<title>ER Flow — Mermaid ER Reader · Smart Edge Snapping</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
@@ -49,11 +49,20 @@ svg.ic{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;strok
 @keyframes bump{40%{transform:scale(1.35)}}
 .top-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
 .tbtn{display:flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--line2);
-  background:#0c1222;color:var(--ink);font:600 12px "Be Vietnam Pro";transition:.15s}
+  background:#0c1222;color:var(--ink);font:600 12px "Be Vietnam Pro";transition:box-shadow .15s,transform .15s,border-color .15s}
 .tbtn:hover{border-color:var(--blue);box-shadow:0 0 12px rgba(35,157,209,.35);transform:translateY(-1px)}
 .tbtn.icon{width:34px;padding:0;justify-content:center}
-.tbtn.primary{background:var(--grad);border-color:transparent;color:#fff}
-.tbtn.primary:hover{box-shadow:0 0 16px rgba(150,37,237,.55)}
+/* Gradient fill with NO border layer → no antialiasing seam / stray colored edges */
+.tbtn.primary{
+  border:0;
+  background:var(--grad);
+  color:#fff;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.22);
+}
+.tbtn.primary:hover{
+  border:0;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.32),inset 0 1px 0 rgba(255,255,255,.28),0 0 18px rgba(150,37,237,.55);
+}
 #btnMenu{display:none}
 #btnSound .off{display:none}
 #btnSound.muted .on{display:none}
@@ -124,7 +133,7 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
 .switch input{position:absolute;opacity:0;width:0}
 .switch .tr{width:32px;height:18px;flex:none;border-radius:999px;background:#1a2340;border:1px solid var(--line2);position:relative;transition:.18s}
 .switch .tr::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#8fa0d8;transition:.18s}
-.switch input:checked+.tr{background:linear-gradient(90deg,#239dd1,#9625ed);border-color:transparent}
+.switch input:checked+.tr{background:linear-gradient(90deg,#239dd1,#9625ed);border-color:#6d5ae0}
 .switch input:checked+.tr::after{left:16px;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.7)}
 .switch input:focus-visible+.tr{outline:2px solid var(--yellow);outline-offset:2px}
 .act-row{display:flex;gap:8px;flex-wrap:wrap}
@@ -225,7 +234,7 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
 <body>
 
 <header class="topbar">
-  <button class="tbtn icon" id="btnMenu" title="Mở khung mã &amp; tinh chỉnh" aria-label="Mở khung điều khiển">
+  <button class="tbtn icon" id="btnMenu" title="Open code &amp; controls" aria-label="Open control panel">
     <svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
   </button>
   <div class="brand">
@@ -240,31 +249,31 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
     </svg>
     <div>
       <h1>ER<em>•</em>FLOW</h1>
-      <small>Bắt cạnh thông minh · khử góc vuông dư thừa</small>
+      <small>Smart edge snapping · no redundant right angles</small>
     </div>
   </div>
   <div class="stats" aria-live="polite">
-    <span class="stat s-blue hidesm">Bảng <b id="stTables">0</b></span>
-    <span class="stat s-mag hidesm">Quan hệ <b id="stRels">0</b></span>
-    <span class="stat s-amb">Góc nối <b id="stBends">0</b></span>
-    <span class="stat s-grn">Đường thẳng <b id="stStraight">0</b></span>
+    <span class="stat s-blue hidesm">Tables <b id="stTables">0</b></span>
+    <span class="stat s-mag hidesm">Relations <b id="stRels">0</b></span>
+    <span class="stat s-amb">Bends <b id="stBends">0</b></span>
+    <span class="stat s-grn">Straight <b id="stStraight">0</b></span>
   </div>
   <div class="top-actions">
-    <button class="tbtn icon" id="btnSound" title="Bật / tắt âm thanh" aria-pressed="true" aria-label="Bật tắt âm thanh">
+    <button class="tbtn icon" id="btnSound" title="Toggle sound" aria-pressed="true" aria-label="Toggle sound">
       <svg class="ic on" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>
       <svg class="ic off" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
     </button>
-    <button class="tbtn" id="btnCopy" title="Sao chép mã Mermaid">
+    <button class="tbtn" id="btnCopy" title="Copy Mermaid code">
       <svg class="ic" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
       <span class="txt">Copy</span>
     </button>
-    <button class="tbtn" id="btnPNG" title="Xuất ảnh PNG">
+    <button class="tbtn" id="btnPNG" title="Export PNG image">
       <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 3 3 4-4 4 4"/></svg>
       <span class="txt">PNG</span>
     </button>
-    <button class="tbtn primary" id="btnSVG" title="Xuất sơ đồ SVG">
+    <button class="tbtn primary" id="btnSVG" title="Export diagram as SVG">
       <svg class="ic" viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-      <span class="txt">Xuất SVG</span>
+      <span class="txt">Export SVG</span>
     </button>
   </div>
 </header>
@@ -272,76 +281,76 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
 <main>
   <aside id="panel">
     <section class="p-sec sec-editor">
-      <div class="p-head">📝 Mã Mermaid
+      <div class="p-head">📝 Mermaid Code
         <span class="sp"></span>
-        <button class="linkbtn" id="btnSeed">Khôi phục mẫu</button>
-        <button class="mini" id="btnReset">🔄 Cập nhật sơ đồ (Reset)</button>
+        <button class="linkbtn" id="btnSeed">Restore Sample</button>
+        <button class="mini" id="btnReset">🔄 Update Diagram (Reset)</button>
       </div>
       <div class="code-wrap">
         <pre id="hl" aria-hidden="true"></pre>
-        <textarea id="code" wrap="off" spellcheck="false" autocomplete="off" aria-label="Mã Mermaid ER"></textarea>
+        <textarea id="code" wrap="off" spellcheck="false" autocomplete="off" aria-label="Mermaid ER code"></textarea>
       </div>
       <div class="ed-status ok" id="edStatus" aria-live="polite"></div>
     </section>
 
-    <section class="p-sec sec-controls" aria-label="Tinh chỉnh hiển thị">
-      <div class="p-head" style="padding:0 0 2px;border:0">⚙ Tinh chỉnh — áp dụng trực tiếp</div>
+    <section class="p-sec sec-controls" aria-label="Live display controls">
+      <div class="p-head" style="padding:0 0 2px;border:0">⚙ Live Controls</div>
       <div class="search">
         <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="tblSearch" list="tblList" placeholder="Tìm bảng… Enter để phóng tới">
+        <input id="tblSearch" list="tblList" placeholder="Find table… Enter to focus">
         <datalist id="tblList"></datalist>
       </div>
       <div class="ctl">
-        <div class="lab"><span>Kiểu đường nối</span></div>
+        <div class="lab"><span>Edge routing</span></div>
         <select id="ctlMode">
-          <option value="smart">🧠 Thông minh — tối thiểu góc</option>
-          <option value="classic">🕰 Cổ điển — ép vuông góc</option>
-          <option value="straight">📏 Đường thẳng</option>
-          <option value="curved">🌊 Cong mềm</option>
+          <option value="smart">🧠 Smart — minimal bends</option>
+          <option value="classic">🕰 Classic — forced orthogonal</option>
+          <option value="straight">📏 Straight lines</option>
+          <option value="curved">🌊 Smooth curves</option>
         </select>
       </div>
       <div class="ctl">
-        <div class="lab"><span>Ngưỡng bắt thẳng hàng</span><output id="outTol">14 px</output></div>
+        <div class="lab"><span>Alignment snap tolerance</span><output id="outTol">14 px</output></div>
         <input type="range" id="ctlTol" min="0" max="30" step="1" value="14">
       </div>
       <div class="ctl">
-        <div class="lab"><span>Bo góc nối</span><output id="outRadius">8 px</output></div>
+        <div class="lab"><span>Corner radius</span><output id="outRadius">8 px</output></div>
         <input type="range" id="ctlRadius" min="0" max="16" step="1" value="8">
       </div>
       <div class="ctl">
-        <div class="lab"><span>Độ dày nét</span><output id="outWidth">2 px</output></div>
+        <div class="lab"><span>Stroke width</span><output id="outWidth">2 px</output></div>
         <input type="range" id="ctlWidth" min="1" max="4" step="0.5" value="2">
       </div>
       <div class="ctl">
-        <div class="lab"><span>Toả điểm neo trên cạnh</span><output id="outSpread">56 %</output></div>
+        <div class="lab"><span>Anchor spread on edge</span><output id="outSpread">56 %</output></div>
         <input type="range" id="ctlSpread" min="30" max="80" step="2" value="56">
       </div>
       <div class="ctl">
-        <div class="lab"><span>Màu cạnh cơ bản</span></div>
+        <div class="lab"><span>Base edge color</span></div>
         <div class="colorrow">
           <input type="color" id="ctlColor" value="#239dd1">
           <code id="outColor">#239dd1</code>
         </div>
       </div>
       <div class="toggles">
-        <label class="switch"><input type="checkbox" id="tglGradient" checked><span class="tr"></span>Gradient theo bảng</label>
-        <label class="switch"><input type="checkbox" id="tglMagnet" checked><span class="tr"></span>Nam châm căn hàng</label>
-        <label class="switch"><input type="checkbox" id="tglGrid" checked><span class="tr"></span>Lưới chấm</label>
-        <label class="switch"><input type="checkbox" id="tglMarkers" checked><span class="tr"></span>Ký hiệu quan hệ</label>
-        <label class="switch"><input type="checkbox" id="tglFlow" checked><span class="tr"></span>Dòng chảy năng lượng</label>
+        <label class="switch"><input type="checkbox" id="tglGradient" checked><span class="tr"></span>Per-table gradient</label>
+        <label class="switch"><input type="checkbox" id="tglMagnet" checked><span class="tr"></span>Alignment magnet</label>
+        <label class="switch"><input type="checkbox" id="tglGrid" checked><span class="tr"></span>Dot grid</label>
+        <label class="switch"><input type="checkbox" id="tglMarkers" checked><span class="tr"></span>Cardinality markers</label>
+        <label class="switch"><input type="checkbox" id="tglFlow" checked><span class="tr"></span>Energy flow</label>
       </div>
       <div class="act-row">
-        <button class="mini" id="btnLayout"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="4" width="7" height="6" rx="1.5"/><rect x="8.5" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v2.5h11V10M12 12.5V14"/></svg>Tự động sắp xếp</button>
-        <button class="mini" id="btnDice"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="9" cy="15" r="1"/></svg>Xáo vị trí</button>
-        <button class="mini" id="btnDefaults"><svg class="ic" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 6"/><path d="M4 16v-6h6"/></svg>Mặc định</button>
+        <button class="mini" id="btnLayout"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="4" width="7" height="6" rx="1.5"/><rect x="8.5" y="14" width="7" height="6" rx="1.5"/><path d="M6.5 10v2.5h11V10M12 12.5V14"/></svg>Auto Layout</button>
+        <button class="mini" id="btnDice"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="9" cy="15" r="1"/></svg>Shuffle</button>
+        <button class="mini" id="btnDefaults"><svg class="ic" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 6"/><path d="M4 16v-6h6"/></svg>Defaults</button>
       </div>
-      <p class="note">Chế độ <b>Thông minh</b> tự chọn cạnh neo gần nhất, gióng hai đầu nối về cùng một trục khi có thể và gộp đoạn thẳng hàng — nhờ vậy đường nối chỉ còn 0–2 góc thay vì gấp khúc liên tục. Kéo bảng gần thẳng hàng, nam châm sẽ hút vào trục và khử sạch góc thừa.</p>
+      <p class="note"><b>Smart</b> mode picks the nearest anchor edge, slides both ports onto a shared axis whenever the table spans overlap, and merges collinear segments — connectors keep 0–2 bends instead of zig-zagging. Drag a table close to alignment and the magnet snaps it onto the axis, wiping out leftover corners.</p>
     </section>
   </aside>
 
   <div id="stage">
     <div id="gridbg"></div>
-    <svg id="scene" role="application" aria-label="Sơ đồ ER tương tác">
+    <svg id="scene" role="application" aria-label="Interactive ER diagram">
       <defs id="defs"></defs>
       <g id="world">
         <g id="edgeLayer"></g>
@@ -350,24 +359,24 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
       </g>
     </svg>
     <div class="stage-tools">
-      <button id="btnZoomOut" title="Thu nhỏ (−)"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
-      <button id="btnZoomPct" title="Về 100%">100%</button>
-      <button id="btnZoomIn" title="Phóng to (+)"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button id="btnZoomOut" title="Zoom out (−)"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      <button id="btnZoomPct" title="Reset to 100%">100%</button>
+      <button id="btnZoomIn" title="Zoom in (+)"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
       <span class="sep"></span>
-      <button id="btnFit" title="Vừa khung (0)"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-      <button id="btnUndo" title="Hoàn tác (Ctrl+Z)"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+      <button id="btnFit" title="Fit view (0)"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button id="btnUndo" title="Undo (Ctrl+Z)"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
     </div>
     <div class="legend" aria-hidden="true">
-      <span><svg viewBox="0 0 26 14"><path d="M0 7h26M8 2v10M13 2v10"/></svg>một (1)</span>
-      <span><svg viewBox="0 0 26 14"><path d="M0 7h26M26 7l-9-5M26 7l-9 5M26 7h-9"/></svg>nhiều (n)</span>
+      <span><svg viewBox="0 0 26 14"><path d="M0 7h26M8 2v10M13 2v10"/></svg>one (1)</span>
+      <span><svg viewBox="0 0 26 14"><path d="M0 7h26M26 7l-9-5M26 7l-9 5M26 7h-9"/></svg>many (n)</span>
       <span><svg viewBox="0 0 26 14"><path d="M0 7h26M9 2v10"/><circle cx="17" cy="7" r="3"/></svg>0–1</span>
     </div>
-    <div class="hint"><b>Kéo bảng</b> để dời · <b>Kéo nền</b> để pan · <b>Lăn chuột</b> zoom · <b>↑↓←→</b> dịch bảng đã chọn</div>
+    <div class="hint"><b>Drag tables</b> to move · <b>Drag canvas</b> to pan · <b>Scroll</b> to zoom · <b>↑↓←→</b> nudge selection</div>
     <div id="tip"></div>
     <div id="empty">
-      <div class="big">🗂 Chưa có sơ đồ</div>
-      <p>Dán mã <code>erDiagram</code> vào khung bên trái, hoặc nạp lại dữ liệu mẫu của hãng taxi.</p>
-      <button class="tbtn primary" id="btnEmptySeed" style="width:auto;padding:0 16px">Nạp mã mẫu</button>
+      <div class="big">🗂 No diagram yet</div>
+      <p>Paste <code>erDiagram</code> code into the editor, or reload the taxi fleet sample.</p>
+      <button class="tbtn primary" id="btnEmptySeed" style="width:auto;padding:0 16px">Load Sample</button>
     </div>
   </div>
 </main>
@@ -377,9 +386,9 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
 
 <script>
 "use strict";
-/* ═══════════════ DỮ LIỆU MẪU ═══════════════ */
-const SEED = `%% ER Flow · kéo bảng để xem cơ chế bắt cạnh thông minh
-%% Chế độ "Thông minh" tự khử các góc vuông dư thừa
+/* ═══════════════ SEED DATA ═══════════════ */
+const SEED = `%% ER Flow · drag tables to watch smart edge snapping
+%% "Smart" mode removes redundant right-angle bends
 erDiagram
     ФИЛИАЛЫ ||--o{ ВОДИТЕЛИ : ""
     ФИЛИАЛЫ ||--o{ ДИСПЕТЧЕРЫ : ""
@@ -445,7 +454,7 @@ let prefs = {...DEF};
 try{ const s=localStorage.getItem("erflow-prefs"); if(s) prefs={...DEF,...JSON.parse(s)}; }catch(e){}
 function savePrefs(){ try{localStorage.setItem("erflow-prefs",JSON.stringify(prefs));}catch(e){} }
 
-/* ═══════════════ TIỆN ÍCH ═══════════════ */
+/* ═══════════════ UTILS ═══════════════ */
 const $ = id => document.getElementById(id);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,k)=>a+(b-a)*k;
@@ -462,7 +471,7 @@ const scene=$("scene"), world=$("world"), edgeLayer=$("edgeLayer"), nodeLayer=$(
       guideLayer=$("guideLayer"), defs=$("defs"), stage=$("stage"), gridbg=$("gridbg"),
       ta=$("code"), hlPre=$("hl"), tip=$("tip");
 
-/* ═══════════════ ÂM THANH ═══════════════ */
+/* ═══════════════ SOUND ═══════════════ */
 let AC=null,lastTick=0;
 function ac(){ if(!prefs.sound)return null;
   if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return null;} }
@@ -516,24 +525,23 @@ function parse(src){
     if(s==="}")return;
     errors.push({line:i+1,text:s});
   });
-  if(block)errors.push({line:src.split(/\r?\n/).length,text:"thiếu dấu } đóng khối "+block.name});
-  // suy luận PK / FK
+  if(block)errors.push({line:src.split(/\r?\n/).length,text:"missing } to close block "+block.name});
+  // infer PK / FK
   const pk=new Map();
   tables.forEach(t=>{ const f=t.attrs[0];
     if(f&&!f.key&&/^id/i.test(f.name))f.key="PK";
     if(f&&f.key==="PK")pk.set(f.name,t.name); });
   tables.forEach(t=>t.attrs.forEach(a=>{ if(!a.key&&pk.has(a.name)&&pk.get(a.name)!==t.name)a.key="FK"; }));
-  // đánh số các quan hệ trùng cặp
+  // index duplicate pairs
   const dup={}; rels.forEach(r=>{ const k=r.a+"|"+r.b; dup[k]=(dup[k]||0); r.key=k+"#"+dup[k]++; });
   return {tables,rels,errors,used};
 }
 
-/* ═══════════════ HIGHLIGHT EDITOR ═══════════════ */
+/* ═══════════════ EDITOR HIGHLIGHT ═══════════════ */
 function highlight(src,used){
   const entCls=n=>used.has(n)?"tok-ent":"tok-unused";
   let block=false;
   return src.split("\n").map(raw=>{
-    // tách comment giữ nguyên khoảng trắng
     let code=raw,com="";
     let inQ=false;
     for(let i=0;i<raw.length-1;i++){ const c=raw[i];
@@ -580,7 +588,7 @@ function highlight(src,used){
 function refreshHL(){ hlPre.innerHTML=highlight(ta.value,state.used); hlPre.scrollTop=ta.scrollTop; hlPre.scrollLeft=ta.scrollLeft; }
 ta.addEventListener("scroll",()=>{hlPre.scrollTop=ta.scrollTop;hlPre.scrollLeft=ta.scrollLeft;});
 
-/* ═══════════════ KÍCH THƯỚC BẢNG ═══════════════ */
+/* ═══════════════ TABLE SIZING ═══════════════ */
 function sizeTable(t){
   mctx.font='700 13px "JetBrains Mono",monospace';
   let w=mctx.measureText(t.name).width+58;
@@ -594,16 +602,18 @@ function sizeTable(t){
   t.h=40+Math.max(1,t.attrs.length)*26+10;
 }
 
-/* ═══════════════ HÌNH HỌC ĐỊNH TUYẾN ═══════════════ */
+/* ═══════════════ ROUTING GEOMETRY ═══════════════ */
 function sidePoint(t,s,f){
   if(s==="L")return{x:t.x,y:t.y+t.h*f};
   if(s==="R")return{x:t.x+t.w,y:t.y+t.h*f};
   if(s==="T")return{x:t.x+t.w*f,y:t.y};
   return{x:t.x+t.w*f,y:t.y+t.h};
 }
+/* Always returns ≥ 2 points — degenerate (coincident-port) routes can never crash rendering */
 function simplify(pts){
+  const src=(pts&&pts.length)?pts:[{x:0,y:0}];
   const out=[];
-  for(const p of pts){const l=out[out.length-1];if(!l||dist(l,p)>.4)out.push({x:p.x,y:p.y});}
+  for(const p of src){const l=out[out.length-1];if(!l||dist(l,p)>.4)out.push({x:p.x,y:p.y});}
   let changed=true;
   while(changed){changed=false;
     for(let i=1;i<out.length-1;i++){
@@ -612,13 +622,14 @@ function simplify(pts){
       const dot=(c.x-p.x)*(n.x-p.x)+(c.y-p.y)*(n.y-p.y);
       if(Math.abs(cr)<.5&&dot>0){out.splice(i,1);changed=true;break;}
     }}
+  if(out.length===1)out.push({x:out[0].x+.6,y:out[0].y});
   return out;
 }
-/* Tuyến vuông góc tối thiểu giữa 2 cổng có hướng — trái tim của bản sửa */
+/* Minimal orthogonal route between two oriented ports — the heart of the fix */
 function orthoRoute(a,da,b,db,A,B){
   const S=18;
-  if(da.x!==0&&da.x===-db.x&&da.y===-db.y){          // đối diện, trục ngang
-    if(Math.abs(a.y-b.y)<.6)return[a,b];              // đã thẳng hàng → 0 góc
+  if(da.x!==0&&da.x===-db.x&&da.y===-db.y){          // facing, horizontal axis
+    if(Math.abs(a.y-b.y)<.6)return[a,b];              // aligned → 0 bends
     const g=(b.x-a.x)*da.x;
     if(g>=-1){const mx=(a.x+b.x)/2;return[a,{x:mx,y:a.y},{x:mx,y:b.y},b];}
     const yt=Math.min(A.y,B.y)-30,yb=Math.max(A.y+A.h,B.y+B.h)+30,my=(a.y+b.y)/2;
@@ -626,7 +637,7 @@ function orthoRoute(a,da,b,db,A,B){
     const x1=a.x+da.x*S,x2=b.x+db.x*S;
     return[a,{x:x1,y:a.y},{x:x1,y:Y},{x:x2,y:Y},{x:x2,y:b.y},b];
   }
-  if(da.y!==0&&da.y===-db.y&&da.x===-db.x){          // đối diện, trục dọc
+  if(da.y!==0&&da.y===-db.y&&da.x===-db.x){          // facing, vertical axis
     if(Math.abs(a.x-b.x)<.6)return[a,b];
     const g=(b.y-a.y)*da.y;
     if(g>=-1){const my=(a.y+b.y)/2;return[a,{x:a.x,y:my},{x:b.x,y:my},b];}
@@ -635,19 +646,19 @@ function orthoRoute(a,da,b,db,A,B){
     const y1=a.y+da.y*S,y2=b.y+db.y*S;
     return[a,{x:a.x,y:y1},{x:X,y:y1},{x:X,y:y2},{x:b.x,y:y2},b];
   }
-  if(da.x===db.x&&da.y===db.y){                       // cùng phía → chữ U
+  if(da.x===db.x&&da.y===db.y){                       // same side → U route
     if(da.x!==0){const X=(da.x>0?Math.max(a.x,b.x):Math.min(a.x,b.x))+da.x*S;
       return[a,{x:X,y:a.y},{x:X,y:b.y},b];}
     const Y=(da.y>0?Math.max(a.y,b.y):Math.min(a.y,b.y))+da.y*S;
     return[a,{x:a.x,y:Y},{x:b.x,y:Y},b];
   }
-  if(da.x!==0){                                       // vuông pha: A ngang, B dọc
+  if(da.x!==0){                                       // perpendicular: A horizontal, B vertical
     const ok1=(b.x-a.x)*da.x>=6, ok2=(a.y-b.y)*db.y>=6;
-    if(ok1&&ok2)return[a,{x:b.x,y:a.y},b];            // 1 góc
+    if(ok1&&ok2)return[a,{x:b.x,y:a.y},b];            // 1 bend
     if(ok1)return[a,{x:b.x,y:a.y},{x:b.x,y:b.y+db.y*S},b];
     const x1=a.x+da.x*S,y2=b.y+db.y*S;
     return[a,{x:x1,y:a.y},{x:x1,y:y2},{x:b.x,y:y2},b];
-  }else{                                              // A dọc, B ngang
+  }else{                                              // A vertical, B horizontal
     const ok1=(b.y-a.y)*da.y>=6, ok2=(a.x-b.x)*db.x>=6;
     if(ok1&&ok2)return[a,{x:a.x,y:b.y},b];
     if(ok1)return[a,{x:a.x,y:b.y},{x:b.x+db.x*S,y:b.y},b];
@@ -664,8 +675,10 @@ function segHit(p,q,r,pad){
   return false;
 }
 function scoreRoute(pts,A,B,T){
+  if(!pts||pts.length<2)return 1e6;
   let len=0;for(let i=1;i<pts.length;i++)len+=dist(pts[i-1],pts[i]);
-  let score=len+(pts.length-2)*70;
+  if(len<2)return 1e6;                                // reject degenerate zero-length routes
+  let score=len+Math.max(0,pts.length-2)*70;
   for(let i=1;i<pts.length;i++)for(const t of T){
     const own=(t===A||t===B);
     if(segHit(pts[i-1],pts[i],t,own?3:1))score+=own?500:160;
@@ -686,9 +699,9 @@ function chooseSides(r,A,B,T){
     if(sc<bs){bs=sc;best=[sa,sb];}
     if(r.sA===sa&&r.sB===sb)prevScore=sc;
   }
-  // trễ: giữ cặp cạnh cũ nếu gần tối ưu → không nhấp nháy khi kéo
+  // hysteresis: keep the previous side pair when near-optimal → no flicker while dragging
   if(prevScore!==null&&prevScore<=bs+30+bs*.05)return;
-  r.sA=best[0];r.sB=best[1];
+  if(best){r.sA=best[0];r.sB=best[1];}
 }
 function pickSidesSimple(A,B){
   const gr=B.x-(A.x+A.w),gl=A.x-(B.x+B.w),gd=B.y-(A.y+A.h),gu=A.y-(B.y+B.h);
@@ -705,16 +718,19 @@ function assignPorts(){
   state.rels.forEach(r=>{add(r,"a");add(r,"b");});
   portGroups.forEach((list,key)=>{
     const [name,s]=key.split("|");const t=state.tables.get(name);
+    if(!t)return;
     const horiz=(s==="L"||s==="R");
     list.sort((u,v)=>{const ou=otherTable(u),ov=otherTable(v);
+      if(!ou||!ov)return 0;
       return horiz?(ou.y+ou.h/2)-(ov.y+ov.h/2):(ou.x+ou.w/2)-(ov.x+ov.w/2);});
     const n=list.length;
     list.forEach((it,i)=>{
       let f;
-      if(n===1){const o=otherTable(it);
+      const o=otherTable(it);
+      if(n===1&&o){
         f=horiz?((o.y+o.h/2)-t.y)/t.h:((o.x+o.w/2)-t.x)/t.w;
         f=clamp(f,.22,.78);
-      }else{const band=prefs.spread/100;f=.5-band/2+band*i/(n-1);}
+      }else{const band=prefs.spread/100;f=n>1?.5-band/2+band*i/(n-1):.5;}
       setPort(it,sidePoint(t,s,f));
     });
   });
@@ -725,17 +741,19 @@ function portFree(r,end,v){
   const horiz=(s==="L"||s==="R");
   for(const it of list){
     if(it.r===r&&it.end===end)continue;
-    const p=getPort(it),c=horiz?p.y:p.x;
+    const p=getPort(it);if(!p)continue;
+    const c=horiz?p.y:p.x;
     if(Math.abs(c-v)<13)return false;
   }
   return true;
 }
-/* Gióng 2 cổng về cùng trục → biến gấp khúc thành đường thẳng */
+/* Slide both ports onto a shared axis → turns doglegs into straight lines */
 function alignPorts(){
   state.rels.forEach(r=>{
     const A=state.tables.get(r.a),B=state.tables.get(r.b);
-    if(A===B)return;
+    if(!A||!B||A===B||!r.pa||!r.pb)return;
     const da=SIDES[r.sA],db=SIDES[r.sB];
+    if(!da||!db)return;
     const hOpp=da.x!==0&&da.x===-db.x, vOpp=da.y!==0&&da.y===-db.y;
     if(hOpp){
       const pa=r.pa,pb=r.pb;
@@ -772,14 +790,19 @@ function classicPts(r){
 }
 function straightRoute(r,A,B){
   const ca={x:A.x+A.w/2,y:A.y+A.h/2},cb={x:B.x+B.w/2,y:B.y+B.h/2};
-  let ux=cb.x-ca.x,uy=cb.y-ca.y;const L=Math.hypot(ux,uy)||1;ux/=L;uy/=L;
+  let ux=cb.x-ca.x,uy=cb.y-ca.y;const L=Math.hypot(ux,uy);
+  if(L<1){ux=1;uy=0;}else{ux/=L;uy/=L;}
   const tA=Math.min(ux?(A.w/2)/Math.abs(ux):1e9, uy?(A.h/2)/Math.abs(uy):1e9);
   const tB=Math.min(ux?(B.w/2)/Math.abs(ux):1e9, uy?(B.h/2)/Math.abs(uy):1e9);
   r.pa={x:ca.x+ux*tA,y:ca.y+uy*tA};r.pb={x:cb.x-ux*tB,y:cb.y-uy*tB};
+  if(dist(r.pa,r.pb)<1)r.pb={x:r.pa.x+1,y:r.pa.y};
   r.pts=[r.pa,r.pb];r.bends=0;r.curve=null;
 }
 function buildFinal(r){
   const A=state.tables.get(r.a),B=state.tables.get(r.b);
+  if(!A||!B||!r.pa||!r.pb||!SIDES[r.sA]||!SIDES[r.sB]){
+    r.pts=[{x:0,y:0},{x:1,y:0}];r.bends=0;r.curve=null;return;
+  }
   let pts;
   if(prefs.mode==="classic")pts=classicPts(r);
   else pts=simplify(orthoRoute(r.pa,SIDES[r.sA],r.pb,SIDES[r.sB],A,B));
@@ -787,6 +810,7 @@ function buildFinal(r){
 }
 function curvedRoute(r){
   const a=r.pa,b=r.pb,da=SIDES[r.sA],db=SIDES[r.sB];
+  if(!a||!b||!da||!db){r.pts=[{x:0,y:0},{x:1,y:0}];r.curve=null;r.bends=0;return;}
   const k=clamp(dist(a,b)*.4,40,160);
   r.curve={a,da,b,db,c1:{x:a.x+da.x*k,y:a.y+da.y*k},c2:{x:b.x+db.x*k,y:b.y+db.y*k}};
   r.pts=[a,b];r.bends=0;
@@ -794,10 +818,12 @@ function curvedRoute(r){
 function routeAll(){
   const T=[...state.tables.values()];
   syncEdgeEls();
-  if(!T.length||!state.rels.length){updateStats();return;}
+  if(!T.length){updateStats();return;}
+  if(!state.rels.length){updateEdgeEls();updateStats();return;}
   const mode=prefs.mode;
   state.rels.forEach(r=>{
     const A=state.tables.get(r.a),B=state.tables.get(r.b);
+    if(!A||!B)return;
     if(mode==="straight"){straightRoute(r,A,B);return;}
     if(mode==="curved"){const s=pickSidesSimple(A,B);r.sA=s[0];r.sB=s[1];}
     else chooseSides(r,A,B,T);
@@ -814,9 +840,9 @@ function routeAll(){
 let routeRaf=0;
 function scheduleRoute(){ if(!routeRaf)routeRaf=requestAnimationFrame(()=>{routeRaf=0;routeAll();}); }
 
-/* ═══════════════ DỰNG PATH ═══════════════ */
+/* ═══════════════ PATH BUILDING ═══════════════ */
 function roundedPath(pts,r){
-  if(pts.length<2)return"";
+  if(!pts||pts.length<2)return"";
   if(pts.length===2||r<.5)return"M"+pts.map(p=>p.x+" "+p.y).join(" L");
   let d=`M${pts[0].x} ${pts[0].y}`;
   for(let i=1;i<pts.length-1;i++){
@@ -837,12 +863,15 @@ function pathD(r){
 function midOf(r){
   if(r.curve){const c=r.curve;
     return{x:(c.a.x+3*c.c1.x+3*c.c2.x+c.b.x)/8,y:(c.a.y+3*c.c1.y+3*c.c2.y+c.b.y)/8};}
-  const pts=r.pts;let L=0;for(let i=1;i<pts.length;i++)L+=dist(pts[i-1],pts[i]);
+  const pts=r.pts||[];
+  if(!pts.length)return{x:0,y:0};
+  if(pts.length===1)return pts[0];
+  let L=0;for(let i=1;i<pts.length;i++)L+=dist(pts[i-1],pts[i]);
   let half=L/2;
   for(let i=1;i<pts.length;i++){const d=dist(pts[i-1],pts[i]);
     if(half<=d){const k=d?half/d:0;return{x:lerp(pts[i-1].x,pts[i].x,k),y:lerp(pts[i-1].y,pts[i].y,k)};}
     half-=d;}
-  return pts[0];
+  return pts[pts.length-1];
 }
 function markerSVG(card,color,w){
   const many=/[{}]/.test(card),zero=/o/.test(card),one=/\|/.test(card),dbl=card==="||";
@@ -853,7 +882,7 @@ function markerSVG(card,color,w){
   return`<g fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round">${s}</g>`;
 }
 
-/* ═══════════════ RENDER BẢNG ═══════════════ */
+/* ═══════════════ NODE RENDER ═══════════════ */
 function hueOf(t){ return state.used.has(t.name)?t.hue:UNUSED_HUE; }
 function renderNodes(){
   nodeLayer.innerHTML="";nodeEls=new Map();
@@ -868,7 +897,7 @@ function renderNodes(){
     g.setAttribute("transform",`translate(${t.x},${t.y})`);
     let rows="";
     if(!t.attrs.length){
-      rows=`<text x="16" y="57" font-size="11" font-style="italic" fill="#7d89b0">(chưa khai báo trường)</text>`;
+      rows=`<text x="16" y="57" font-size="11" font-style="italic" fill="#7d89b0">(no fields declared)</text>`;
     }else t.attrs.forEach((a,i)=>{
       const y=40+i*26;
       const kc=a.key==="PK"?"#ffd94a":a.key==="FK"?"#239dd1":"#cc6c23";
@@ -892,7 +921,7 @@ function renderNodes(){
 }
 function setNodePos(t){ const g=nodeEls.get(t.name);if(g)g.setAttribute("transform",`translate(${t.x},${t.y})`); }
 
-/* ═══════════════ RENDER CẠNH ═══════════════ */
+/* ═══════════════ EDGE RENDER ═══════════════ */
 const SVGNS="http://www.w3.org/2000/svg";
 function syncEdgeEls(){
   const keep=new Map();
@@ -900,7 +929,7 @@ function syncEdgeEls(){
   edgeLayer.innerHTML="";defs.innerHTML="";edgeEls=[];
   state.rels.forEach((r,i)=>{
     const A=state.tables.get(r.a),B=state.tables.get(r.b);
-    const hA=hueOf(A),hB=hueOf(B);
+    const hA=A?hueOf(A):"#239dd1",hB=B?hueOf(B):"#d444ea";
     const grad=document.createElementNS(SVGNS,"linearGradient");
     grad.setAttribute("id","eg"+i);grad.setAttribute("gradientUnits","userSpaceOnUse");
     grad.innerHTML=`<stop offset="0" stop-color="${hA}"/><stop offset="1" stop-color="${hB}"/>`;
@@ -931,7 +960,8 @@ function updateEdgeEls(){
     contentBB.x2=Math.max(contentBB.x2,x);contentBB.y2=Math.max(contentBB.y2,y);};
   state.tables.forEach(t=>{eat(t.x,t.y);eat(t.x+t.w,t.y+t.h);});
   state.rels.forEach((r,i)=>{
-    const e=edgeEls[i];if(!e||!r.pa)return;
+    const e=edgeEls[i];
+    if(!e||!r.pa||!r.pb||!r.pts||r.pts.length<2)return;   // hard guard — never read undefined points
     const d=pathD(r);
     e.main.setAttribute("d",d);e.flow.setAttribute("d",d);e.hit.setAttribute("d",d);
     e.main.setAttribute("stroke",prefs.gradient?`url(#eg${i})`:prefs.edgeColor);
@@ -939,13 +969,17 @@ function updateEdgeEls(){
     if(r.style==="..")e.main.setAttribute("stroke-dasharray","7 5");else e.main.removeAttribute("stroke-dasharray");
     e.grad.setAttribute("x1",r.pa.x);e.grad.setAttribute("y1",r.pa.y);
     e.grad.setAttribute("x2",r.pb.x);e.grad.setAttribute("y2",r.pb.y);
-    // hướng ký hiệu
+    // marker directions (with safe fallbacks)
     let dA,dB;
     if(r.curve){dA=r.curve.da;dB=r.curve.db;}
-    else{const p=r.pts,n=p.length;
-      const u={x:p[1].x-p[0].x,y:p[1].y-p[0].y},v={x:p[n-2].x-p[n-1].x,y:p[n-2].y-p[n-1].y};
-      const lu=Math.hypot(u.x,u.y)||1,lv=Math.hypot(v.x,v.y)||1;
-      dA={x:u.x/lu,y:u.y/lu};dB={x:v.x/lv,y:v.y/lv};}
+    else{
+      const p=r.pts,n=p.length;
+      const p0=p[0],p1=p[1]||p[0],q0=p[n-2]||p[0],q1=p[n-1]||p[0];
+      let ux=p1.x-p0.x,uy=p1.y-p0.y,vx=q0.x-q1.x,vy=q0.y-q1.y;
+      const lu=Math.hypot(ux,uy),lv=Math.hypot(vx,vy);
+      dA=lu>.01?{x:ux/lu,y:uy/lu}:(SIDES[r.sA]||{x:1,y:0});
+      dB=lv>.01?{x:vx/lv,y:vy/lv}:(SIDES[r.sB]||{x:-1,y:0});
+    }
     const place=(g,p,dir,card,hue,which)=>{
       const ang=Math.atan2(dir.y,dir.x)*180/Math.PI;
       g.setAttribute("transform",`translate(${p.x},${p.y}) rotate(${ang})`);
@@ -956,22 +990,23 @@ function updateEdgeEls(){
       }};
     place(e.ma,r.pa,dA,r.cA,e.hA,"a");
     place(e.mb,r.pb,dB,r.cB,e.hB,"b");
-    // nhãn
+    // label pill
     if(r.label){
-      if(e.labKey!==r.label){e.labText.textContent=r.label;e.labKey=r.label;
-        try{const bb=e.labText.getBBox();
-          e.labRect.setAttribute("x",bb.x-8);e.labRect.setAttribute("y",bb.y-4);
-          e.labRect.setAttribute("width",bb.width+16);e.labRect.setAttribute("height",bb.height+8);
-          e.labText.setAttribute("y",e.labRect.getAttribute("y")*1+bb.height+4- bb.y-4+bb.y+ (bb.height+8)/2 - (bb.height/2) - bb.y + bb.y); // đặt lại bên dưới
-        }catch(err){}}
       e.lab.style.display="";
+      if(e.labKey!==r.label){
+        e.labText.textContent=r.label;e.labKey=r.label;
+        e.labText.setAttribute("x",0);e.labText.setAttribute("y",4);
+        try{
+          const bb=e.labText.getBBox();
+          e.labRect.setAttribute("x",-bb.width/2-8);
+          e.labRect.setAttribute("y",-9);
+          e.labRect.setAttribute("width",bb.width+16);
+          e.labRect.setAttribute("height",18);
+        }catch(err){}
+      }
       const m=midOf(r);
       e.lab.setAttribute("transform",`translate(${m.x},${m.y})`);
-      e.labText.setAttribute("x",0);e.labText.setAttribute("y",4);
-      try{const bb=e.labText.getBBox();
-        e.labRect.setAttribute("x",-bb.width/2-8);e.labRect.setAttribute("y",-9);
-        e.labRect.setAttribute("width",bb.width+16);e.labRect.setAttribute("height",18);}catch(err){}
-    }else e.lab.style.display="none";
+    }else{e.lab.style.display="none";e.labKey=null;}
     r.pts.forEach(p=>eat(p.x,p.y));
     if(r.curve){eat(r.curve.c1.x,r.curve.c1.y);eat(r.curve.c2.x,r.curve.c2.y);}
   });
@@ -985,7 +1020,7 @@ function updateStats(){
   set("stBends",bends);set("stStraight",straight+"/"+state.rels.length);
 }
 
-/* ═══════════════ ÁP DỤNG SƠ ĐỒ ═══════════════ */
+/* ═══════════════ APPLY DIAGRAM ═══════════════ */
 function applyDiagram(p,opts={}){
   const old=state.tables;
   const fresh=new Map();let hueIdx=0,added=false;
@@ -1002,10 +1037,10 @@ function applyDiagram(p,opts={}){
   if(p.errors.length){
     st.className="ed-status err";
     const e=p.errors[0];
-    st.innerHTML=`⚠ ${p.errors.length} dòng lỗi — <button data-line="${e.line}">dòng ${e.line}: ${esc(e.text.slice(0,34))}</button>`;
+    st.innerHTML=`⚠ ${p.errors.length} invalid line${p.errors.length>1?"s":""} — <button data-line="${e.line}">line ${e.line}: ${esc(e.text.slice(0,34))}</button>`;
   }else{
     st.className="ed-status ok";
-    st.textContent=`✓ ${fresh.size} bảng · ${p.rels.length} quan hệ — đã áp dụng`;
+    st.textContent=`✓ ${fresh.size} tables · ${p.rels.length} relations — applied`;
   }
   $("tblList").innerHTML=[...fresh.keys()].map(n=>`<option value="${esc(n)}">`).join("");
   renderNodes();routeAll();
@@ -1034,10 +1069,14 @@ function animate(tag,dur,step,done){
   tweens.push({tag,t0:performance.now(),dur,step,done});
   if(!loopOn){loopOn=true;requestAnimationFrame(tweenLoop);}
 }
+/* Crash-proof loop: a throwing step can never kill the rAF chain or freeze future animations */
 function tweenLoop(now){
-  for(let i=tweens.length-1;i>=0;i--){const t=tweens[i];
-    const k=clamp((now-t.t0)/t.dur,0,1);t.step(easeOut(k));
-    if(k===1){tweens.splice(i,1);t.done&&t.done();}}
+  for(let i=tweens.length-1;i>=0;i--){
+    const t=tweens[i];
+    const k=clamp((now-t.t0)/t.dur,0,1);
+    try{t.step(easeOut(k));}catch(err){console.error("tween step:",err);}
+    if(k>=1){tweens.splice(i,1);try{if(t.done)t.done();}catch(err){console.error(err);}}
+  }
   if(tweens.length)requestAnimationFrame(tweenLoop);else loopOn=false;
 }
 function applyView(){
@@ -1074,7 +1113,6 @@ function layoutTargets(){
   const maxL=Math.max(...level);
   const cols=[];for(let l=0;l<=maxL;l++)cols.push([]);
   T.forEach((t,i)=>cols[level[i]].push(i));
-  // sắp xếp theo trọng tâm láng giềng để giảm cắt chéo
   const order=new Array(T.length).fill(0);
   cols.forEach(c=>c.forEach((ti,j)=>order[ti]=j));
   for(let sweep=0;sweep<3;sweep++){
@@ -1096,13 +1134,13 @@ function layoutTargets(){
   });
   return targets;
 }
-function tweenTo(targets,dur=420,after){
+function tweenTo(targets,dur=420,after,commit=true){
   const starts={};state.tables.forEach(t=>starts[t.name]={x:t.x,y:t.y});
   animate("layout",dur,k=>{
     state.tables.forEach(t=>{const g=targets[t.name];if(!g)return;
       t.x=lerp(starts[t.name].x,g.x,k);t.y=lerp(starts[t.name].y,g.y,k);setNodePos(t);});
     routeAll();
-  },()=>{pushHistory();after&&after();});
+  },()=>{if(commit)pushHistory();if(after)after();});
 }
 function autoLayout(anim=true){
   const targets=layoutTargets();
@@ -1113,12 +1151,15 @@ function autoLayout(anim=true){
 function snapshot(){const s={};state.tables.forEach(t=>s[t.name]={x:Math.round(t.x),y:Math.round(t.y)});return s;}
 function pushHistory(){history.push(snapshot());if(history.length>60)history.shift();$("btnUndo").disabled=history.length<2;}
 function undo(){
-  if(history.length<2){toast("Không còn gì để hoàn tác","warn");return;}
-  history.pop();const s=history[history.length-1];$("btnUndo").disabled=history.length<2;
-  sndUI();tweenTo(s,260);history.pop();$("btnUndo").disabled=history.length<2;
+  if(history.length<2){toast("Nothing to undo","warn");return;}
+  history.pop();
+  const s=history[history.length-1];
+  $("btnUndo").disabled=history.length<2;
+  sndUI();
+  tweenTo(s,260,null,false);
 }
 
-/* ═══════════════ TƯƠNG TÁC CHUỘT / CẢM ỨNG ═══════════════ */
+/* ═══════════════ POINTER / TOUCH ═══════════════ */
 const pointers=new Map();
 function toWorld(e){const r=stage.getBoundingClientRect();
   return{x:(e.clientX-r.left-view.x)/view.z,y:(e.clientY-r.top-view.y)/view.z};}
@@ -1239,10 +1280,10 @@ function hoverPick(e){
     const i=+eg.dataset.i,r=state.rels[i];
     if(!hover||hover.type!=="edge"||hover.i!==i)setFocus({type:"edge",i});
     if(r){
-      const meta=r.curve?`<b>cong mềm</b>`:(r.bends===0?`<b>thẳng ✨ 0 góc</b>`:`${r.bends} góc nối`);
+      const meta=r.curve?`<b>smooth curve</b>`:(r.bends===0?`<b>straight ✨ 0 bends</b>`:`${r.bends} bend${r.bends>1?"s":""}`);
       tip.innerHTML=`<div class="t-route">${esc(r.a)} ⟶ ${esc(r.b)}</div>
         <div class="t-card">${CARD_HUMAN[r.cA]||r.cA} — ${CARD_HUMAN[r.cB]||r.cB}${r.label?" · “"+esc(r.label)+"”":""}</div>
-        <div class="t-meta">Tuyến: ${meta}</div>`;
+        <div class="t-meta">Route: ${meta}</div>`;
       const sr=stage.getBoundingClientRect();
       let tx=e.clientX-sr.left+14,ty=e.clientY-sr.top+14;
       tip.style.display="block";
@@ -1258,7 +1299,7 @@ function selectNode(name){
   if(sel)sndUI();
 }
 function focusTable(name){
-  const t=state.tables.get(name);if(!t){toast("Không tìm thấy bảng","warn");return;}
+  const t=state.tables.get(name);if(!t){toast("Table not found","warn");return;}
   sel=name;nodeEls.forEach((g,n)=>g.classList.toggle("sel",n===sel));
   const g=nodeEls.get(name);g.classList.remove("pulse");void g.getBoundingClientRect();g.classList.add("pulse");
   setTimeout(()=>g.classList.remove("pulse"),1800);
@@ -1269,7 +1310,7 @@ function focusTable(name){
   if(window.innerWidth<=960)closePanel();
 }
 
-/* ═══════════════ BÀN PHÍM ═══════════════ */
+/* ═══════════════ KEYBOARD ═══════════════ */
 window.addEventListener("keydown",e=>{
   const tag=(e.target.tagName||"").toLowerCase();
   if(tag==="textarea"||tag==="input"||tag==="select")return;
@@ -1289,7 +1330,7 @@ window.addEventListener("keydown",e=>{
   }
 });
 
-/* ═══════════════ ĐIỀU KHIỂN ═══════════════ */
+/* ═══════════════ CONTROLS ═══════════════ */
 function syncInputs(){
   $("ctlMode").value=prefs.mode;
   $("ctlTol").value=prefs.tol;$("outTol").textContent=prefs.tol+" px";
@@ -1311,7 +1352,7 @@ bindRange("ctlRadius","radius","outRadius",v=>v+" px");
 bindRange("ctlWidth","width","outWidth",v=>v+" px");
 bindRange("ctlSpread","spread","outSpread",v=>v+" %");
 $("ctlMode").addEventListener("change",e=>{prefs.mode=e.target.value;savePrefs();sndUI();routeAll();
-  toast(prefs.mode==="smart"?"🧠 Chế độ thông minh: tối thiểu góc vuông":prefs.mode==="classic"?"🕰 Chế độ cổ điển (nhiều góc hơn)":"Đã đổi kiểu đường nối");});
+  toast(prefs.mode==="smart"?"🧠 Smart mode: minimal bends":prefs.mode==="classic"?"🕰 Classic mode (more bends)":"Edge style changed");});
 $("ctlColor").addEventListener("input",e=>{prefs.edgeColor=e.target.value;$("outColor").textContent=prefs.edgeColor;savePrefs();scheduleRoute();});
 [["tglGradient","gradient"],["tglMagnet","magnet"],["tglGrid","grid"],["tglMarkers","markers"],["tglFlow","flow"]].forEach(([id,key])=>{
   $(id).addEventListener("change",e=>{prefs[key]=e.target.checked;savePrefs();sndUI();
@@ -1321,16 +1362,16 @@ $("ctlColor").addEventListener("input",e=>{prefs.edgeColor=e.target.value;$("out
     else scheduleRoute();});
 });
 $("btnSound").addEventListener("click",()=>{prefs.sound=!prefs.sound;savePrefs();syncInputs();if(prefs.sound)sndOK();
-  toast(prefs.sound?"🔊 Đã bật âm thanh":"🔇 Đã tắt âm thanh");});
+  toast(prefs.sound?"🔊 Sound on":"🔇 Sound muted");});
 $("btnLayout").addEventListener("click",()=>autoLayout(true));
 $("btnDice").addEventListener("click",()=>{
   const T=[...state.tables.values()];if(!T.length)return;
   const cols=Math.ceil(Math.sqrt(T.length)),targets={};
   const shuffled=[...T].sort(()=>Math.random()-.5);
-  shuffled.forEach((t,i)=>{targets[t.name]={x:80+(i%cols)*300+(Math.random()*70-35),y:80+Math.floor(i/cols)*230+(Math.random()*60-30)};});
-  sndUI();tweenTo(targets,420,()=>fitView(true));toast("🎲 Đã xáo vị trí — bấm Tự động sắp xếp để dọn lại");
+  shuffled.forEach((t,i)=>{targets[t.name]={x:80+(i%cols)*400+(Math.random()*50-25),y:80+Math.floor(i/cols)*260+(Math.random()*50-25)};});
+  sndUI();tweenTo(targets,420,()=>fitView(true));toast("🎲 Positions shuffled — hit Auto Layout to tidy up");
 });
-$("btnDefaults").addEventListener("click",()=>{prefs={...DEF,sound:prefs.sound};savePrefs();syncInputs();routeAll();sndUI();toast("Đã về thông số mặc định");});
+$("btnDefaults").addEventListener("click",()=>{prefs={...DEF,sound:prefs.sound};savePrefs();syncInputs();routeAll();sndUI();toast("Defaults restored");});
 $("btnZoomIn").addEventListener("click",()=>{const r=stage.getBoundingClientRect();zoomAt(r.width/2,r.height/2,1.2);});
 $("btnZoomOut").addEventListener("click",()=>{const r=stage.getBoundingClientRect();zoomAt(r.width/2,r.height/2,1/1.2);});
 $("btnZoomPct").addEventListener("click",()=>{const r=stage.getBoundingClientRect();zoomAt(r.width/2,r.height/2,1/view.z);});
@@ -1340,15 +1381,15 @@ $("tblSearch").addEventListener("keydown",e=>{if(e.key==="Enter"){focusTable(e.t
 $("tblSearch").addEventListener("change",e=>{if(e.target.value.trim()){focusTable(e.target.value.trim());e.target.value="";}});
 function resetDiagram(){
   const p=parse(ta.value);state.used=p.used;refreshHL();
-  applyDiagram(p,{relayout:true});sndOK();toast("🔄 Đã cập nhật sơ đồ");
+  applyDiagram(p,{relayout:true});sndOK();toast("🔄 Diagram updated");
   if(window.innerWidth<=960)closePanel();
 }
 $("btnReset").addEventListener("click",resetDiagram);
-const loadSeed=()=>{ta.value=SEED;const p=parse(SEED);state.used=p.used;refreshHL();applyDiagram(p,{relayout:true});sndOK();toast("Đã nạp mã mẫu hãng taxi");};
+const loadSeed=()=>{ta.value=SEED;const p=parse(SEED);state.used=p.used;refreshHL();applyDiagram(p,{relayout:true});sndOK();toast("Taxi fleet sample loaded");};
 $("btnSeed").addEventListener("click",loadSeed);
 $("btnEmptySeed").addEventListener("click",loadSeed);
 
-/* panel mobile */
+/* mobile panel */
 function closePanel(){$("panel").classList.remove("open");$("scrim").classList.remove("show");}
 $("btnMenu").addEventListener("click",()=>{
   const open=!$("panel").classList.contains("open");
@@ -1356,7 +1397,7 @@ $("btnMenu").addEventListener("click",()=>{
 });
 $("scrim").addEventListener("click",closePanel);
 
-/* ═══════════════ XUẤT FILE ═══════════════ */
+/* ═══════════════ EXPORT ═══════════════ */
 function buildExportSVG(){
   const bb=contentBB||{x1:0,y1:0,x2:800,y2:600};
   const pad=40,x=bb.x1-pad,y=bb.y1-pad,w=bb.x2-bb.x1+pad*2,h=bb.y2-bb.y1+pad*2;
@@ -1376,29 +1417,29 @@ function download(name,blob){
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
 $("btnSVG").addEventListener("click",()=>{
-  if(!state.tables.size){toast("Chưa có sơ đồ để xuất","warn");return;}
+  if(!state.tables.size){toast("No diagram to export","warn");return;}
   download("er-flow.svg",new Blob([buildExportSVG()],{type:"image/svg+xml;charset=utf-8"}));
-  sndOK();toast("Đã xuất er-flow.svg ✓");
+  sndOK();toast("Exported er-flow.svg ✓");
 });
 $("btnPNG").addEventListener("click",()=>{
-  if(!state.tables.size){toast("Chưa có sơ đồ để xuất","warn");return;}
+  if(!state.tables.size){toast("No diagram to export","warn");return;}
   const svg=buildExportSVG();
   const img=new Image();
   img.onload=()=>{
     const c=document.createElement("canvas");c.width=img.width*2;c.height=img.height*2;
     const cx=c.getContext("2d");cx.scale(2,2);cx.drawImage(img,0,0);
-    c.toBlob(b=>{if(b){download("er-flow.png",b);sndOK();toast("Đã xuất er-flow.png ✓");}
-      else toast("Không tạo được PNG","err");},"image/png");
+    c.toBlob(b=>{if(b){download("er-flow.png",b);sndOK();toast("Exported er-flow.png ✓");}
+      else toast("PNG export failed","err");},"image/png");
   };
-  img.onerror=()=>toast("Không tải được ảnh SVG để xuất","err");
+  img.onerror=()=>toast("Could not rasterize SVG","err");
   img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 });
 $("btnCopy").addEventListener("click",async()=>{
-  try{await navigator.clipboard.writeText(ta.value);sndOK();toast("Đã sao chép mã Mermaid ✓");}
-  catch(e){ta.select();try{document.execCommand("copy");toast("Đã sao chép mã ✓");}catch(err){toast("Không sao chép được","err");}}
+  try{await navigator.clipboard.writeText(ta.value);sndOK();toast("Mermaid code copied ✓");}
+  catch(e){ta.select();try{document.execCommand("copy");toast("Mermaid code copied ✓");}catch(err){toast("Copy failed","err");}}
 });
 
-/* ═══════════════ KHỞI ĐỘNG ═══════════════ */
+/* ═══════════════ BOOT ═══════════════ */
 window.addEventListener("resize",()=>applyView());
 function init(){
   syncInputs();
