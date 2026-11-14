@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Trình Đọc Cú Pháp ER Tự Vẽ - Tự Động Căn Chỉnh</title>
+    <style>
+        html, body {
+            width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+            background-color: #0f172a; color: #fff; font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 30%; height: 100%; border-right: 1px solid #1e293b; background-color: #0f172a;
+            display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; z-index: 30;
+        }
+
+        .sidebar h2 { font-size: 16px; margin-top: 0; margin-bottom: 8px; color: #38bdf8; font-weight: 600; }
+        
+        .sidebar .hint {
+            font-size: 11px; color: #94a3b8; margin-bottom: 12px; line-height: 1.4;
+            background: #1e293b; padding: 10px; border-radius: 6px; border-left: 4px solid #38bdf8;
+        }
+
+        .sidebar .hint b { color: #38bdf8; }
+
+        .sidebar textarea {
+            width: 100%; flex: 1; padding: 14px; background-color: #020617; border: 1px solid #334155;
+            border-radius: 8px; font-family: monospace; font-size: 12px; color: #34d399;
+            outline: none; resize: none; box-sizing: border-box; line-height: 1.5;
+        }
+
+        .sidebar textarea:focus { border-color: #38bdf8; }
+        .sidebar textarea::-webkit-scrollbar { width: 8px; height: 8px; }
+        .sidebar textarea::-webkit-scrollbar-track { background: #020617; border-radius: 8px; }
+        .sidebar textarea::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
+        .sidebar textarea::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .sidebar button {
+            margin-top: 16px; background-color: #0284c7; color: white; font-weight: 600;
+            padding: 12px 16px; border: none; border-radius: 8px; cursor: pointer;
+            font-size: 13px; transition: background 0.2s;
+        }
+        .sidebar button:hover { background-color: #0ea5e9; }
+
+        .canvas-container {
+            width: 70%; height: 100%; position: relative; background-color: #0b0f19;
+            background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 20px 20px;
+            overflow: hidden;
+        }
+
+        .svg-canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1;
+        }
+
+        .nodes-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none;
+        }
+
+        .table-node {
+            position: absolute; border-radius: 8px; border: 1px solid #38bdf8;
+            background-color: #1e293b; width: 220px; font-size: 13px; overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); pointer-events: auto;
+        }
+
+        .node-header {
+            background: linear-gradient(to right, #0369a1, #1d4ed8); padding: 8px 12px;
+            font-weight: bold; text-align: center; color: white; border-bottom: 1px solid #38bdf8;
+            font-size: 11px; cursor: move; letter-spacing: 0.5px;
+        }
+
+        .node-body { padding: 6px; background-color: #0f172a; }
+
+        .attr-row {
+            padding: 4px 8px; background-color: rgba(30, 41, 59, 0.5); border: 1px solid #1e293b;
+            border-radius: 4px; font-family: monospace; font-size: 11px; margin-bottom: 4px;
+            display: flex; justify-content: space-between; color: #cbd5e1;
+        }
+
+        .pk-badge { color: #38bdf8; font-size: 9px; font-family: sans-serif; font-weight: bold; }
+
+        .handle {
+            position: absolute; width: 12px; height: 12px; border-radius: 50%;
+            background-color: #38bdf8; border: 2px solid #0f172a;
+            transform: translate(-50%, -50%); z-index: 20; pointer-events: auto;
+            cursor: grab; box-shadow: 0 0 4px rgba(0,0,0,0.8);
+            transition: transform 0.1s, opacity 0.2s;
+            opacity: 0;
+        }
+        
+        .canvas-container:hover .handle { opacity: 0.8; }
+        .handle:hover { transform: translate(-50%, -50%) scale(1.5); cursor: grabbing; opacity: 1 !important; }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <h2>📝 Mermaid ER Parser</h2>
+        <div class="hint">
+            <b>Thao tác:</b> Kéo các bảng để sắp xếp (Điểm tiếp xúc tự động thay đổi).<br>
+            Kéo <b style="color:#38bdf8">chấm xanh dương</b> để uốn cong, đồng thời <b>"cắm lại dây"</b> sang cạnh khác của bảng nếu muốn.
+        </div>
+        <textarea id="mermaidInput">erDiagram
+    ФИЛИАЛЫ ||--o{ ВОДИТЕЛИ : ""
+    ФИЛИАЛЫ ||--o{ ДИСПЕТЧЕРЫ : ""
+    ТАРИФЫ ||--o{ АВТОМОБИЛИ : ""
+    КЛИЕНTЫ ||--o{ ПОЕЗДКИ : ""
+    ВОДИТЕЛИ ||--o{ ПОЕЗДКИ : ""
+    АВТОМОБИЛИ ||--o{ ПОЕЗДКИ : ""
+    ПОЕЗДКИ ||--o| ОТЗЫВЫ : ""
+
+    ФИЛИАЛЫ {
+        id_филиала
+        адрес
+    }
+    ДИСПЕТЧЕРЫ {
+        id_диспетчера
+        фио
+        id_филиала
+    }
+    КЛИЕНTЫ {
+        id_клиента
+        фио
+        телефон
+    }
+    ВОДИТЕЛИ {
+        id_водителя
+        фио
+        номер_прав
+        id_филиала
+    }
+    ТАРИФЫ {
+        id_тарифа
+        название
+        цена_за_км
+    }
+    АВТОМОБИЛИ {
+        id_автомобиля
+        марка
+        госномер
+        id_тарифа
+    }
+    ПОЕЗДКИ {
+        id_поездки
+        id_клиента
+        id_водителя
+        id_автомобиля
+        стоимость
+        дата_поездки
+    }
+    ОТЗЫВЫ {
+        id_отзыва
+        id_поездки
+        оценка
+        текст
+    }</textarea>
+        <button id="renderBtn">🔄 Cập nhật sơ đồ (Reset)</button>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <svg id="svgCanvas" class="svg-canvas" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="nodesContainer" class="nodes-layer"></div>
+    </div>
+
+    <script>
+        let diagramData = { entities: [], relations: [] };
+        let nodePositions = {};
+        let dragState = null;
+
+        function parseMermaidER(text) {
+            const lines = text.split('\n');
+            const entities = {};
+            const relations = [];
+            let currentEntity = null;
+
+            lines.forEach(line => {
+                let trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('erDiagram') || trimmed.startsWith('%%')) return;
+
+                const entityMatch = trimmed.match(/^([^\s{]+)\s*\{$/);
+                if (entityMatch) {
+                    currentEntity = entityMatch[1];
+                    if (!entities[currentEntity]) entities[currentEntity] = { name: currentEntity, attributes: [] };
+                    return;
+                }
+
+                if (trimmed === '}') { currentEntity = null; return; }
+
+                if (currentEntity) {
+                    const attr = trimmed.replace(/["']/g, '').trim();
+                    if (attr) entities[currentEntity].attributes.push(attr);
+                    return;
+                }
+
+                const relMatch = trimmed.match(/^(\S+)\s+([|o\{\}]+)\s*--\s*([|o\{\}]+)\s+(\S+)(?:\s*:\s*.*)?$/);
+                if (relMatch) {
+                    const source = relMatch[1];
+                    const leftCard = relMatch[2];
+                    const rightCard = relMatch[3];
+                    const target = relMatch[4];
+
+                    relations.push({ source, target, leftCard, rightCard });
+                    if (!entities[source]) entities[source] = { name: source, attributes: [] };
+                    if (!entities[target]) entities[target] = { name: target, attributes: [] };
+                }
+            });
+
+            return { entities: Object.values(entities), relations };
+        }
+
+        function renderNodes() {
+            const container = document.getElementById('nodesContainer');
+            container.innerHTML = '';
+
+            diagramData.entities.forEach((entity, index) => {
+                if (!nodePositions[entity.name]) {
+                    const cols = 3;
+                    const row = Math.floor(index / cols);
+                    const col = index % cols;
+                    nodePositions[entity.name] = { x: col * 280 + 40, y: row * 240 + 40 };
+                }
+
+                const pos = nodePositions[entity.name];
+                const nodeDiv = document.createElement('div');
+                nodeDiv.className = 'table-node';
+                nodeDiv.style.left = `${pos.x}px`;
+                nodeDiv.style.top = `${pos.y}px`;
+                nodeDiv.setAttribute('data-id', entity.name);
+
+                const header = document.createElement('div');
+                header.className = 'node-header';
+                header.innerText = entity.name;
+                nodeDiv.appendChild(header);
+
+                const body = document.createElement('div');
+                body.className = 'node-body';
+
+                if (entity.attributes.length > 0) {
+                    entity.attributes.forEach(attr => {
+                        const attrDiv = document.createElement('div');
+                        attrDiv.className = 'attr-row';
+                        const nameSpan = document.createElement('span');
+                        nameSpan.innerText = attr;
+                        attrDiv.appendChild(nameSpan);
+
+                        if (attr.startsWith('id_')) {
+                            const pkSpan = document.createElement('span');
+                            pkSpan.className = 'pk-badge';
+                            pkSpan.innerText = 'PK';
+                            attrDiv.appendChild(pkSpan);
+                        }
+                        body.appendChild(attrDiv);
+                    });
+                } else {
+                    body.innerHTML = '<div style="color: #475569; font-style: italic; padding: 2px 4px; font-size: 11px;">Không thuộc tính</div>';
+                }
+
+                nodeDiv.appendChild(body);
+                container.appendChild(nodeDiv);
+                makeDraggable(nodeDiv, header, entity.name);
+            });
+        }
+
+        function renderEdges() {
+            const svg = document.getElementById('svgCanvas');
+            const container = document.getElementById('nodesContainer');
+
+            if (!svg.querySelector('defs')) {
+                const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                defs.innerHTML = `
+                    <marker id="marker-start-one" viewBox="0 0 12 10" refX="12" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 3,1 L 3,9 M 7,1 L 7,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /></marker>
+                    <marker id="marker-start-zero-one" viewBox="0 0 12 10" refX="12" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><circle cx="3" cy="5" r="2.5" stroke="#38bdf8" stroke-width="1.5" fill="#0b0f19" /><path d="M 9,1 L 9,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /></marker>
+                    <marker id="marker-start-zero-many" viewBox="0 0 12 10" refX="12" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><circle cx="2" cy="5" r="2" stroke="#38bdf8" stroke-width="1.5" fill="#0b0f19" /><path d="M 10,1 L 5,5 L 10,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /><path d="M 5,5 L 10,5" stroke="#38bdf8" stroke-width="1.5" fill="none" /></marker>
+                    <marker id="marker-start-one-many" viewBox="0 0 12 10" refX="12" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 2,1 L 2,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /><path d="M 10,1 L 5,5 L 10,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /><path d="M 5,5 L 10,5" stroke="#38bdf8" stroke-width="1.5" fill="none" /></marker>
+                    <marker id="marker-end-one" viewBox="0 0 12 10" refX="12" refY="5" markerWidth="10" markerHeight="8" orient="auto"><path d="M 3,1 L 3,9 M 7,1 L 7,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /></marker>
+                    <marker id="marker-end-zero-one" viewBox="0 0 12 10" refX="12" refY="5" markerWidth="10" markerHeight="8" orient="auto"><circle cx="3" cy="5" r="2.5" stroke="#38bdf8" stroke-width="1.5" fill="#0b0f19" /><path d="M 9,1 L 9,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /></marker>
+                    <marker id="marker-end-zero-many" viewBox="0 0 12 10" refX="12" refY="5" markerWidth="10" markerHeight="8" orient="auto"><circle cx="2" cy="5" r="2" stroke="#38bdf8" stroke-width="1.5" fill="#0b0f19" /><path d="M 10,1 L 5,5 L 10,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /><path d="M 5,5 L 10,5" stroke="#38bdf8" stroke-width="1.5" fill="none" /></marker>
+                    <marker id="marker-end-one-many" viewBox="0 0 12 10" refX="12" refY="5" markerWidth="10" markerHeight="8" orient="auto"><path d="M 2,1 L 2,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /><path d="M 10,1 L 5,5 L 10,9" stroke="#38bdf8" stroke-width="1.5" fill="none" /><path d="M 5,5 L 10,5" stroke="#38bdf8" stroke-width="1.5" fill="none" /></marker>
+                `;
+                svg.appendChild(defs);
+            }
+
+            svg.querySelectorAll('path.edge-path').forEach(el => el.remove());
+            container.querySelectorAll('.handle').forEach(el => el.remove());
+
+            diagramData.relations.forEach(rel => {
+                const srcEl = document.querySelector(`[data-id="${rel.source}"]`);
+                const tgtEl = document.querySelector(`[data-id="${rel.target}"]`);
+                if (!srcEl || !tgtEl) return;
+
+                const srcPos = nodePositions[rel.source];
+                const tgtPos = nodePositions[rel.target];
+                const srcW = srcEl.offsetWidth, srcH = srcEl.offsetHeight;
+                const tgtW = tgtEl.offsetWidth, tgtH = tgtEl.offsetHeight;
+
+                const offset = 6;
+                
+                // Tự động chọn cạnh thông minh dựa trên Vector
+                const sPort = rel.sPort || getBestPort(srcPos, srcW, srcH, tgtPos, tgtW, tgtH, 's');
+                const tPort = rel.tPort || getBestPort(srcPos, srcW, srcH, tgtPos, tgtW, tgtH, 't');
+
+                const start = getPortCoords(srcPos, srcW, srcH, sPort, offset);
+                const end = getPortCoords(tgtPos, tgtW, tgtH, tPort, offset);
+
+                const sHoriz = (sPort === 'L' || sPort === 'R');
+                const tHoriz = (tPort === 'L' || tPort === 'R');
+
+                let pathData = '';
+                let handleX, handleY;
+                let handleAxis = 'both';
+
+                if (sHoriz && tHoriz) {
+                    const mx = rel.bendX !== undefined ? rel.bendX : (start.x + end.x) / 2;
+                    pathData = `M ${start.x} ${start.y} L ${mx} ${start.y} L ${mx} ${end.y} L ${end.x} ${end.y}`;
+                    handleX = mx;
+                    handleY = (start.y + end.y) / 2;
+                    handleAxis = 'x';
+                } else if (!sHoriz && !tHoriz) {
+                    const my = rel.bendY !== undefined ? rel.bendY : (start.y + end.y) / 2;
+                    pathData = `M ${start.x} ${start.y} L ${start.x} ${my} L ${end.x} ${my} L ${end.x} ${end.y}`;
+                    handleX = (start.x + end.x) / 2;
+                    handleY = my;
+                    handleAxis = 'y';
+                } else if (sHoriz && !tHoriz) {
+                    const mx = rel.bendX !== undefined ? rel.bendX : (start.x + end.x) / 2;
+                    const my = rel.bendY !== undefined ? rel.bendY : (start.y + end.y) / 2;
+                    pathData = `M ${start.x} ${start.y} L ${mx} ${start.y} L ${mx} ${my} L ${end.x} ${my} L ${end.x} ${end.y}`;
+                    handleX = mx;
+                    handleY = my;
+                    handleAxis = 'both';
+                } else {
+                    const mx = rel.bendX !== undefined ? rel.bendX : (start.x + end.x) / 2;
+                    const my = rel.bendY !== undefined ? rel.bendY : (start.y + end.y) / 2;
+                    pathData = `M ${start.x} ${start.y} L ${start.x} ${my} L ${mx} ${my} L ${mx} ${end.y} L ${end.x} ${end.y}`;
+                    handleX = mx;
+                    handleY = my;
+                    handleAxis = 'both';
+                }
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathData);
+                path.setAttribute('class', 'edge-path');
+                path.setAttribute('stroke', '#38bdf8');
+                path.setAttribute('stroke-width', '2');
+                path.setAttribute('fill', 'none');
+
+                const startMarkers = { '||': 'one', '|o': 'zero-one', '}o': 'zero-many', '}|': 'one-many' };
+                const endMarkers = { '||': 'one', 'o|': 'zero-one', 'o{': 'zero-many', '|{': 'one-many' };
+
+                if (startMarkers[rel.leftCard]) path.setAttribute('marker-start', `url(#marker-start-${startMarkers[rel.leftCard]})`);
+                if (endMarkers[rel.rightCard]) path.setAttribute('marker-end', `url(#marker-end-${endMarkers[rel.rightCard]})`);
+                svg.appendChild(path);
+
+                const handle = document.createElement('div');
+                handle.className = 'handle';
+                handle.style.left = `${handleX}px`;
+                handle.style.top = `${handleY}px`;
+                
+                handle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    dragState = { rel, axis: handleAxis };
+                    document.body.style.cursor = 'grabbing';
+                });
+                
+                container.appendChild(handle);
+            });
+        }
+
+        function getPortCoords(pos, w, h, port, offset) {
+            switch (port) {
+                case 'L': return { x: pos.x - offset, y: pos.y + h / 2 };
+                case 'R': return { x: pos.x + w + offset, y: pos.y + h / 2 };
+                case 'T': return { x: pos.x + w / 2, y: pos.y - offset };
+                case 'B': return { x: pos.x + w / 2, y: pos.y + h + offset };
+                default: return { x: pos.x, y: pos.y };
+            }
+        }
+
+        // Thuật toán Auto-Routing hoàn hảo dựa trên Vector hướng
+        function getBestPort(srcPos, srcW, srcH, tgtPos, tgtW, tgtH, mode) {
+            const dx = (tgtPos.x + tgtW / 2) - (srcPos.x + srcW / 2);
+            const dy = (tgtPos.y + tgtH / 2) - (srcPos.y + srcH / 2);
+
+            // Nếu khoảng cách ngang lớn hơn dọc, ta ưu tiên nối ngang
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (mode === 's') return dx > 0 ? 'R' : 'L';
+                return dx > 0 ? 'L' : 'R';
+            } else {
+                if (mode === 's') return dy > 0 ? 'B' : 'T';
+                return dy > 0 ? 'T' : 'B';
+            }
+        }
+
+        // Cập nhật: Kéo bảng sẽ reset lại port và điểm uốn
+        function makeDraggable(nodeEl, headerEl, entityName) {
+            let active = false;
+            let currentX, currentY, initialX, initialY;
+            let xOffset = nodePositions[entityName].x;
+            let yOffset = nodePositions[entityName].y;
+
+            headerEl.addEventListener('mousedown', dragStart);
+            window.addEventListener('mousemove', drag);
+            window.addEventListener('mouseup', dragEnd);
+
+            function dragStart(e) {
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+                if (e.target === headerEl || headerEl.contains(e.target)) active = true;
+            }
+
+            function drag(e) {
+                if (!active) return;
+                e.preventDefault();
+
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                nodePositions[entityName] = { x: currentX, y: currentY };
+                nodeEl.style.left = `${currentX}px`;
+                nodeEl.style.top = `${currentY}px`;
+
+                // Reset để dây tự động căn chỉnh lại theo vị trí mới
+                diagramData.relations.forEach(rel => {
+                    if (rel.source === entityName || rel.target === entityName) {
+                        delete rel.bendX;
+                        delete rel.bendY;
+                        delete rel.sPort;
+                        delete rel.tPort;
+                    }
+                });
+
+                renderEdges();
+            }
+
+            function dragEnd() { active = false; }
+        }
+
+        // Cập nhật: Kéo Handle sẽ vừa uốn cong vừa thay đổi điểm tiếp xúc
+        window.addEventListener('mousemove', (e) => {
+            if (!dragState) return;
+            
+            const canvasRect = document.getElementById('canvasContainer').getBoundingClientRect();
+            const mouseX = e.clientX - canvasRect.left;
+            const mouseY = e.clientY - canvasRect.top;
+
+            const { rel, axis } = dragState;
+            
+            if (axis === 'x' || axis === 'both') rel.bendX = mouseX;
+            if (axis === 'y' || axis === 'both') rel.bendY = mouseY;
+
+            // Logic "Cắm lại dây": Chọn cạnh dựa trên vị trí chuột so với bảng
+            const srcEl = document.querySelector(`[data-id="${rel.source}"]`);
+            const tgtEl = document.querySelector(`[data-id="${rel.target}"]`);
+            
+            if (srcEl && tgtEl) {
+                const srcPos = nodePositions[rel.source];
+                const tgtPos = nodePositions[rel.target];
+                const srcW = srcEl.offsetWidth, srcH = srcEl.offsetHeight;
+                const tgtW = tgtEl.offsetWidth, tgtH = tgtEl.offsetHeight;
+
+                let newSPort = rel.sPort || getBestPort(srcPos, srcW, srcH, tgtPos, tgtW, tgtH, 's');
+                let newTPort = rel.tPort || getBestPort(srcPos, srcW, srcH, tgtPos, tgtW, tgtH, 't');
+
+                // Xác định cạnh dựa trên vị trí chuột cho Source
+                if (mouseX < srcPos.x) newSPort = 'L';
+                else if (mouseX > srcPos.x + srcW) newSPort = 'R';
+                else if (mouseY < srcPos.y) newSPort = 'T';
+                else if (mouseY > srcPos.y + srcH) newSPort = 'B';
+                else {
+                    const dL = Math.abs(mouseX - srcPos.x);
+                    const dR = Math.abs(mouseX - (srcPos.x + srcW));
+                    const dT = Math.abs(mouseY - srcPos.y);
+                    const dB = Math.abs(mouseY - (srcPos.y + srcH));
+                    const minD = Math.min(dL, dR, dT, dB);
+                    if (minD === dL) newSPort = 'L';
+                    else if (minD === dR) newSPort = 'R';
+                    else if (minD === dT) newSPort = 'T';
+                    else newSPort = 'B';
+                }
+
+                // Xác định cạnh dựa trên vị trí chuột cho Target
+                if (mouseX < tgtPos.x) newTPort = 'L';
+                else if (mouseX > tgtPos.x + tgtW) newTPort = 'R';
+                else if (mouseY < tgtPos.y) newTPort = 'T';
+                else if (mouseY > tgtPos.y + tgtH) newTPort = 'B';
+                else {
+                    const dL = Math.abs(mouseX - tgtPos.x);
+                    const dR = Math.abs(mouseX - (tgtPos.x + tgtW));
+                    const dT = Math.abs(mouseY - tgtPos.y);
+                    const dB = Math.abs(mouseY - (tgtPos.y + tgtH));
+                    const minD = Math.min(dL, dR, dT, dB);
+                    if (minD === dL) newTPort = 'L';
+                    else if (minD === dR) newTPort = 'R';
+                    else if (minD === dT) newTPort = 'T';
+                    else newTPort = 'B';
+                }
+
+                // Cập nhật nếu có thay đổi
+                if (rel.sPort !== newSPort || rel.tPort !== newTPort) {
+                    rel.sPort = newSPort;
+                    rel.tPort = newTPort;
+                    
+                    // Cập nhật lại trục kéo của Handle cho phù hợp
+                    const sHoriz = (newSPort === 'L' || newSPort === 'R');
+                    const tHoriz = (newTPort === 'L' || newTPort === 'R');
+                    if (sHoriz && tHoriz) dragState.axis = 'x';
+                    else if (!sHoriz && !tHoriz) dragState.axis = 'y';
+                    else dragState.axis = 'both';
+                }
+            }
+
+            renderEdges();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (dragState) {
+                dragState = null;
+                document.body.style.cursor = '';
+            }
+        });
+
+        function updateDiagram() {
+            const input = document.getElementById('mermaidInput').value;
+            diagramData = parseMermaidER(input);
+            
+            dragState = null;
+            diagramData.relations.forEach(rel => {
+                delete rel.bendX;
+                delete rel.bendY;
+                delete rel.sPort;
+                delete rel.tPort;
+            });
+
+            renderNodes();
+            setTimeout(renderEdges, 50); 
+        }
+
+        document.getElementById('renderBtn').addEventListener('click', updateDiagram);
+        window.onload = updateDiagram;
+    </script>
+</body>
+</html>
