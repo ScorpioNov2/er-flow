@@ -29,6 +29,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
 svg.ic{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
+/* PNG icon with graceful inline-SVG fallback (drop files into /icons to override) */
+.ic-pair{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex:none}
+.ic-pair img{width:16px;height:16px;object-fit:contain;display:block}
+.ic-pair img.failed{display:none}
+.ic-pair .fb{display:none;width:16px;height:16px}
+.ic-pair img.failed ~ .fb{display:block}
+
 /* ── Topbar ─────────────────────────── */
 .topbar{position:relative;z-index:60;height:58px;display:flex;align-items:center;gap:14px;padding:0 14px;
   background:linear-gradient(180deg,#0c1120,#080c17);border-bottom:1px solid var(--line)}
@@ -52,17 +59,10 @@ svg.ic{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;strok
   background:#0c1222;color:var(--ink);font:600 12px "Be Vietnam Pro";transition:box-shadow .15s,transform .15s,border-color .15s}
 .tbtn:hover{border-color:var(--blue);box-shadow:0 0 12px rgba(35,157,209,.35);transform:translateY(-1px)}
 .tbtn.icon{width:34px;padding:0;justify-content:center}
-/* Gradient fill with NO border layer → no antialiasing seam / stray colored edges */
-.tbtn.primary{
-  border:0;
-  background:var(--grad);
-  color:#fff;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.22);
-}
-.tbtn.primary:hover{
-  border:0;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.32),inset 0 1px 0 rgba(255,255,255,.28),0 0 18px rgba(150,37,237,.55);
-}
+.tbtn.primary{border:0;background:var(--grad);color:#fff;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.22)}
+.tbtn.primary:hover{border:0;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.32),inset 0 1px 0 rgba(255,255,255,.28),0 0 18px rgba(150,37,237,.55)}
 #btnMenu{display:none}
 #btnSound .off{display:none}
 #btnSound.muted .on{display:none}
@@ -73,21 +73,24 @@ svg.ic{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;strok
 main{display:flex;height:calc(100dvh - 58px)}
 aside{width:382px;flex:none;display:flex;flex-direction:column;min-height:0;background:var(--bg2);border-right:1px solid var(--line);z-index:50}
 .p-sec{display:flex;flex-direction:column;min-height:0}
-.p-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);
+.p-head{display:flex;align-items:center;gap:8px;row-gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);
   font:700 12px "Be Vietnam Pro";letter-spacing:.4px;text-transform:uppercase;color:var(--dim)}
 .p-head .sp{flex:1}
-.linkbtn{font:600 11px "Be Vietnam Pro";color:var(--blue);text-decoration:underline dotted;text-underline-offset:3px}
+.p-title{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.linkbtn{font:600 11px "Be Vietnam Pro";color:var(--blue);text-decoration:underline dotted;text-underline-offset:3px;text-transform:none;white-space:nowrap}
 .linkbtn:hover{color:var(--magenta)}
-.mini{display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:8px;border:1px solid var(--line2);
-  background:#0c1222;font:600 11.5px "Be Vietnam Pro";transition:.15s}
+.mini{display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--line2);
+  background:#0c1222;font:600 11.5px "Be Vietnam Pro";text-transform:none;white-space:nowrap;line-height:1;transition:.15s}
 .mini:hover{border-color:var(--purple);box-shadow:0 0 10px rgba(150,37,237,.35)}
+#btnReset{margin-left:auto;height:30px;flex:none}
 
 /* editor */
 .sec-editor{flex:1.05 1 46%;min-height:210px;border-bottom:1px solid var(--line)}
 .code-wrap{position:relative;flex:1;min-height:0;background:#070b14}
+/* integer font-size + line-height → caret and highlight never drift apart */
 .code-wrap pre,.code-wrap textarea{
-  position:absolute;inset:0;padding:12px 14px;font:500 12.5px/1.65 "JetBrains Mono",Consolas,monospace;
-  white-space:pre;tab-size:4;letter-spacing:0;border:0}
+  position:absolute;inset:0;padding:12px 14px;font:500 13px/21px "JetBrains Mono",Consolas,monospace;
+  white-space:pre;tab-size:4;letter-spacing:0;border:0;font-variant-ligatures:none}
 .code-wrap pre{overflow:hidden;pointer-events:none;color:#dfe7fb}
 .code-wrap textarea{overflow:auto;resize:none;background:transparent;color:transparent;caret-color:var(--yellow);outline:none}
 .code-wrap textarea::selection{background:rgba(35,157,209,.3);color:transparent}
@@ -165,7 +168,7 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
   background:rgba(10,15,28,.82);backdrop-filter:blur(8px);border:1px solid var(--line2);border-radius:11px;
   padding:7px 12px;font:500 10.5px "Be Vietnam Pro";color:var(--dim)}
 .legend span{display:flex;align-items:center;gap:5px}
-.legend svg{width:26px;height:14px;stroke:var(--blue);fill:none;stroke-width:1.6;stroke-linecap:round}
+.legend svg{width:26px;height:14px;stroke:var(--blue);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .hint{position:absolute;left:12px;bottom:12px;z-index:10;font:500 10.5px "Be Vietnam Pro";color:var(--dim2);
   background:rgba(10,15,28,.72);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
 .hint b{color:var(--dim)}
@@ -281,10 +284,17 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
 <main>
   <aside id="panel">
     <section class="p-sec sec-editor">
-      <div class="p-head">📝 Mermaid Code
+      <div class="p-head">
+        <span class="p-title">
+          <span class="ic-pair"><img src="icons/mermaid.png" alt="" onerror="this.classList.add('failed')"><svg class="ic fb" viewBox="0 0 24 24"><path d="M9 6 4 12l5 6M15 6l5 6-5 6"/></svg></span>
+          Mermaid Code
+        </span>
         <span class="sp"></span>
         <button class="linkbtn" id="btnSeed">Restore Sample</button>
-        <button class="mini" id="btnReset">🔄 Update Diagram (Reset)</button>
+        <button class="mini" id="btnReset">
+          <span class="ic-pair"><img src="icons/reset.png" alt="" onerror="this.classList.add('failed')"><svg class="ic fb" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v5h-5"/></svg></span>
+          Update Diagram (Reset)
+        </button>
       </div>
       <div class="code-wrap">
         <pre id="hl" aria-hidden="true"></pre>
@@ -368,8 +378,8 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
     </div>
     <div class="legend" aria-hidden="true">
       <span><svg viewBox="0 0 26 14"><path d="M0 7h26M8 2v10M13 2v10"/></svg>one (1)</span>
-      <span><svg viewBox="0 0 26 14"><path d="M0 7h26M26 7l-9-5M26 7l-9 5M26 7h-9"/></svg>many (n)</span>
-      <span><svg viewBox="0 0 26 14"><path d="M0 7h26M9 2v10"/><circle cx="17" cy="7" r="3"/></svg>0–1</span>
+      <span><svg viewBox="0 0 26 14"><path d="M0 7h25M16 7l9-4M16 7l9 4"/></svg>many (n)</span>
+      <span><svg viewBox="0 0 26 14"><path d="M0 7h26M17 2v10"/><circle cx="9" cy="7" r="3.2" fill="#0a0f1c"/></svg>0–1</span>
     </div>
     <div class="hint"><b>Drag tables</b> to move · <b>Drag canvas</b> to pan · <b>Scroll</b> to zoom · <b>↑↓←→</b> nudge selection</div>
     <div id="tip"></div>
@@ -504,7 +514,7 @@ function parse(src){
       if(s==="}"){block=null;return;}
       const toks=s.match(/"[^"]*"|\S+/g)||[]; const words=[],strs=[];
       toks.forEach(t=>t[0]==='"'?strs.push(t.slice(1,-1)):words.push(t));
-      const isKey=w=>/^(PK|FK|UK)$/i.test(w);
+      const isKey=w=>/^(PK|FK|UK|PK_FK)$/i.test(w);
       let type="",name="",key="";
       if(words.length===1)name=words[0];
       else if(words.length===2){ if(isKey(words[1])){name=words[0];key=words[1].toUpperCase();}else{type=words[0];name=words[1];} }
@@ -526,13 +536,11 @@ function parse(src){
     errors.push({line:i+1,text:s});
   });
   if(block)errors.push({line:src.split(/\r?\n/).length,text:"missing } to close block "+block.name});
-  // infer PK / FK
   const pk=new Map();
   tables.forEach(t=>{ const f=t.attrs[0];
     if(f&&!f.key&&/^id/i.test(f.name))f.key="PK";
-    if(f&&f.key==="PK")pk.set(f.name,t.name); });
+    if(f&&(f.key==="PK"||f.key==="PK_FK"))pk.set(f.name,t.name); });
   tables.forEach(t=>t.attrs.forEach(a=>{ if(!a.key&&pk.has(a.name)&&pk.get(a.name)!==t.name)a.key="FK"; }));
-  // index duplicate pairs
   const dup={}; rels.forEach(r=>{ const k=r.a+"|"+r.b; dup[k]=(dup[k]||0); r.key=k+"#"+dup[k]++; });
   return {tables,rels,errors,used};
 }
@@ -569,7 +577,7 @@ function highlight(src,used){
     }
     if(block){
       const words=(s.match(/"[^"]*"|\S+/g)||[]).filter(t=>t[0]!=='"');
-      const isKey=w=>/^(PK|FK|UK)$/i.test(w);
+      const isKey=w=>/^(PK|FK|UK|PK_FK)$/i.test(w);
       let role={};
       if(words.length===1)role[words[0]]="tok-var";
       else if(words.length===2&&isKey(words[1])){role[words[0]]="tok-var";}
@@ -594,11 +602,11 @@ function sizeTable(t){
   let w=mctx.measureText(t.name).width+58;
   mctx.font='500 12px "JetBrains Mono",monospace';
   t.attrs.forEach(a=>{
-    let aw=mctx.measureText(a.name).width+(a.key?36:0)+30;
+    let aw=mctx.measureText(a.name).width+(a.key?40:0)+30;
     if(a.type)aw+=mctx.measureText(a.type).width+18;
     w=Math.max(w,aw);
   });
-  t.w=clamp(Math.ceil(w),184,330);
+  t.w=clamp(Math.ceil(w),184,340);
   t.h=40+Math.max(1,t.attrs.length)*26+10;
 }
 
@@ -609,7 +617,6 @@ function sidePoint(t,s,f){
   if(s==="T")return{x:t.x+t.w*f,y:t.y};
   return{x:t.x+t.w*f,y:t.y+t.h};
 }
-/* Always returns ≥ 2 points — degenerate (coincident-port) routes can never crash rendering */
 function simplify(pts){
   const src=(pts&&pts.length)?pts:[{x:0,y:0}];
   const out=[];
@@ -625,11 +632,10 @@ function simplify(pts){
   if(out.length===1)out.push({x:out[0].x+.6,y:out[0].y});
   return out;
 }
-/* Minimal orthogonal route between two oriented ports — the heart of the fix */
 function orthoRoute(a,da,b,db,A,B){
   const S=18;
-  if(da.x!==0&&da.x===-db.x&&da.y===-db.y){          // facing, horizontal axis
-    if(Math.abs(a.y-b.y)<.6)return[a,b];              // aligned → 0 bends
+  if(da.x!==0&&da.x===-db.x&&da.y===-db.y){
+    if(Math.abs(a.y-b.y)<.6)return[a,b];
     const g=(b.x-a.x)*da.x;
     if(g>=-1){const mx=(a.x+b.x)/2;return[a,{x:mx,y:a.y},{x:mx,y:b.y},b];}
     const yt=Math.min(A.y,B.y)-30,yb=Math.max(A.y+A.h,B.y+B.h)+30,my=(a.y+b.y)/2;
@@ -637,7 +643,7 @@ function orthoRoute(a,da,b,db,A,B){
     const x1=a.x+da.x*S,x2=b.x+db.x*S;
     return[a,{x:x1,y:a.y},{x:x1,y:Y},{x:x2,y:Y},{x:x2,y:b.y},b];
   }
-  if(da.y!==0&&da.y===-db.y&&da.x===-db.x){          // facing, vertical axis
+  if(da.y!==0&&da.y===-db.y&&da.x===-db.x){
     if(Math.abs(a.x-b.x)<.6)return[a,b];
     const g=(b.y-a.y)*da.y;
     if(g>=-1){const my=(a.y+b.y)/2;return[a,{x:a.x,y:my},{x:b.x,y:my},b];}
@@ -646,19 +652,19 @@ function orthoRoute(a,da,b,db,A,B){
     const y1=a.y+da.y*S,y2=b.y+db.y*S;
     return[a,{x:a.x,y:y1},{x:X,y:y1},{x:X,y:y2},{x:b.x,y:y2},b];
   }
-  if(da.x===db.x&&da.y===db.y){                       // same side → U route
+  if(da.x===db.x&&da.y===db.y){
     if(da.x!==0){const X=(da.x>0?Math.max(a.x,b.x):Math.min(a.x,b.x))+da.x*S;
       return[a,{x:X,y:a.y},{x:X,y:b.y},b];}
     const Y=(da.y>0?Math.max(a.y,b.y):Math.min(a.y,b.y))+da.y*S;
     return[a,{x:a.x,y:Y},{x:b.x,y:Y},b];
   }
-  if(da.x!==0){                                       // perpendicular: A horizontal, B vertical
+  if(da.x!==0){
     const ok1=(b.x-a.x)*da.x>=6, ok2=(a.y-b.y)*db.y>=6;
-    if(ok1&&ok2)return[a,{x:b.x,y:a.y},b];            // 1 bend
+    if(ok1&&ok2)return[a,{x:b.x,y:a.y},b];
     if(ok1)return[a,{x:b.x,y:a.y},{x:b.x,y:b.y+db.y*S},b];
     const x1=a.x+da.x*S,y2=b.y+db.y*S;
     return[a,{x:x1,y:a.y},{x:x1,y:y2},{x:b.x,y:y2},b];
-  }else{                                              // A vertical, B horizontal
+  }else{
     const ok1=(b.y-a.y)*da.y>=6, ok2=(a.x-b.x)*db.x>=6;
     if(ok1&&ok2)return[a,{x:a.x,y:b.y},b];
     if(ok1)return[a,{x:a.x,y:b.y},{x:b.x+db.x*S,y:b.y},b];
@@ -677,7 +683,7 @@ function segHit(p,q,r,pad){
 function scoreRoute(pts,A,B,T){
   if(!pts||pts.length<2)return 1e6;
   let len=0;for(let i=1;i<pts.length;i++)len+=dist(pts[i-1],pts[i]);
-  if(len<2)return 1e6;                                // reject degenerate zero-length routes
+  if(len<2)return 1e6;
   let score=len+Math.max(0,pts.length-2)*70;
   for(let i=1;i<pts.length;i++)for(const t of T){
     const own=(t===A||t===B);
@@ -699,7 +705,6 @@ function chooseSides(r,A,B,T){
     if(sc<bs){bs=sc;best=[sa,sb];}
     if(r.sA===sa&&r.sB===sb)prevScore=sc;
   }
-  // hysteresis: keep the previous side pair when near-optimal → no flicker while dragging
   if(prevScore!==null&&prevScore<=bs+30+bs*.05)return;
   if(best){r.sA=best[0];r.sB=best[1];}
 }
@@ -747,7 +752,6 @@ function portFree(r,end,v){
   }
   return true;
 }
-/* Slide both ports onto a shared axis → turns doglegs into straight lines */
 function alignPorts(){
   state.rels.forEach(r=>{
     const A=state.tables.get(r.a),B=state.tables.get(r.b);
@@ -900,11 +904,12 @@ function renderNodes(){
       rows=`<text x="16" y="57" font-size="11" font-style="italic" fill="#7d89b0">(no fields declared)</text>`;
     }else t.attrs.forEach((a,i)=>{
       const y=40+i*26;
-      const kc=a.key==="PK"?"#ffd94a":a.key==="FK"?"#239dd1":"#cc6c23";
+      const kc=a.key==="PK"?"#ffd94a":a.key==="FK"?"#239dd1":a.key==="PK_FK"?"#d444ea":"#cc6c23";
+      const kw=a.key==="PK_FK"?38:24;
       rows+=(i?`<line x1="10" y1="${y}" x2="${t.w-10}" y2="${y}" stroke="#1b2340" stroke-width="1"/>`:"");
-      if(a.key)rows+=`<rect x="12" y="${y+6}" width="24" height="14" rx="4" fill="${kc}22" stroke="${kc}66" stroke-width="1"/>
-        <text x="24" y="${y+16.5}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${kc}" font-family="JetBrains Mono,monospace">${a.key}</text>`;
-      rows+=`<text x="${a.key?44:16}" y="${y+17}" font-size="12" fill="#dfe7fb" font-family="JetBrains Mono,monospace">${esc(a.name)}</text>`;
+      if(a.key)rows+=`<rect x="12" y="${y+6}" width="${kw}" height="14" rx="4" fill="${kc}22" stroke="${kc}66" stroke-width="1"/>
+        <text x="${12+kw/2}" y="${y+16.5}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${kc}" font-family="JetBrains Mono,monospace">${a.key}</text>`;
+      rows+=`<text x="${a.key?(kw+22):16}" y="${y+17}" font-size="12" fill="#dfe7fb" font-family="JetBrains Mono,monospace">${esc(a.name)}</text>`;
       if(a.type)rows+=`<text x="${t.w-14}" y="${y+17}" text-anchor="end" font-size="10.5" fill="#8b96bb" font-family="JetBrains Mono,monospace">${esc(a.type)}</text>`;
     });
     g.innerHTML=`
@@ -961,7 +966,7 @@ function updateEdgeEls(){
   state.tables.forEach(t=>{eat(t.x,t.y);eat(t.x+t.w,t.y+t.h);});
   state.rels.forEach((r,i)=>{
     const e=edgeEls[i];
-    if(!e||!r.pa||!r.pb||!r.pts||r.pts.length<2)return;   // hard guard — never read undefined points
+    if(!e||!r.pa||!r.pb||!r.pts||r.pts.length<2)return;
     const d=pathD(r);
     e.main.setAttribute("d",d);e.flow.setAttribute("d",d);e.hit.setAttribute("d",d);
     e.main.setAttribute("stroke",prefs.gradient?`url(#eg${i})`:prefs.edgeColor);
@@ -969,7 +974,6 @@ function updateEdgeEls(){
     if(r.style==="..")e.main.setAttribute("stroke-dasharray","7 5");else e.main.removeAttribute("stroke-dasharray");
     e.grad.setAttribute("x1",r.pa.x);e.grad.setAttribute("y1",r.pa.y);
     e.grad.setAttribute("x2",r.pb.x);e.grad.setAttribute("y2",r.pb.y);
-    // marker directions (with safe fallbacks)
     let dA,dB;
     if(r.curve){dA=r.curve.da;dB=r.curve.db;}
     else{
@@ -990,7 +994,6 @@ function updateEdgeEls(){
       }};
     place(e.ma,r.pa,dA,r.cA,e.hA,"a");
     place(e.mb,r.pb,dB,r.cB,e.hB,"b");
-    // label pill
     if(r.label){
       e.lab.style.display="";
       if(e.labKey!==r.label){
@@ -1052,7 +1055,7 @@ $("edStatus").addEventListener("click",e=>{
   const line=+b.dataset.line,lines=ta.value.split("\n");
   const pos=lines.slice(0,line-1).join("\n").length+(line>1?1:0);
   ta.focus();ta.setSelectionRange(pos,pos+(lines[line-1]||"").length);
-  ta.scrollTop=Math.max(0,(line-3)*20.6);
+  ta.scrollTop=Math.max(0,(line-3)*21);
 });
 let parseTimer=0;
 ta.addEventListener("input",()=>{
@@ -1069,7 +1072,6 @@ function animate(tag,dur,step,done){
   tweens.push({tag,t0:performance.now(),dur,step,done});
   if(!loopOn){loopOn=true;requestAnimationFrame(tweenLoop);}
 }
-/* Crash-proof loop: a throwing step can never kill the rAF chain or freeze future animations */
 function tweenLoop(now){
   for(let i=tweens.length-1;i>=0;i--){
     const t=tweens[i];
@@ -1381,7 +1383,7 @@ $("tblSearch").addEventListener("keydown",e=>{if(e.key==="Enter"){focusTable(e.t
 $("tblSearch").addEventListener("change",e=>{if(e.target.value.trim()){focusTable(e.target.value.trim());e.target.value="";}});
 function resetDiagram(){
   const p=parse(ta.value);state.used=p.used;refreshHL();
-  applyDiagram(p,{relayout:true});sndOK();toast("🔄 Diagram updated");
+  applyDiagram(p,{relayout:true});sndOK();toast("Diagram updated ✓");
   if(window.innerWidth<=960)closePanel();
 }
 $("btnReset").addEventListener("click",resetDiagram);
