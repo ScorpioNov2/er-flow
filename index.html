@@ -359,7 +359,7 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
         <button class="mini" id="btnDice"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="9" cy="15" r="1"/></svg>Shuffle</button>
         <button class="mini" id="btnDefaults"><svg class="ic" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 6"/><path d="M4 16v-6h6"/></svg>Defaults</button>
       </div>
-      <p class="note"><b>Smart</b> mode picks the nearest anchor edge and merges collinear segments. Every bend uses the <b>same Corner radius</b>, and a bend is never placed on the contact side of a port: the router always swings <b>outward</b> past the marker zone before turning, so a connector can never fold back on itself next to a crow's-foot / circle.</p>
+      <p class="note">Both routers attach to the <b>facing edges with the clearest gap</b>: stacked tables join top↔bottom, side-by-side tables join left↔right — a connector only detours around a table when the straight corridor is actually blocked. Every port keeps a straight run-out (marker zone + Corner radius), no bend ever folds back onto its own contact side, and all corners share the same radius.</p>
     </section>
   </aside>
 
@@ -464,8 +464,8 @@ const UNUSED_HUE = "#c7d3cd";
 const SIDES = {L:{x:-1,y:0}, R:{x:1,y:0}, T:{x:0,y:-1}, B:{x:0,y:1}};
 /* Straight run-out reserved at every port so crow's-foot / circle markers
    always sit on a straight segment. The router adds the live Corner radius
-   on top of this so EVERY corner (even the ones beside a marker) can use the
-   full, identical radius instead of collapsing to a sharp angle.           */
+   on top of this so EVERY corner (even beside a marker) uses the full,
+   identical radius instead of collapsing to a sharp angle.                */
 const LEAD = 26;
 const CARD_HUMAN = {"||":"1","|o":"0–1","}o":"0–n","}|":"1–n","o|":"0–1","o{":"0–n","|{":"1–n"};
 const REL_RE = /^(\S+)\s+(\|\||\|o|\}o|\}\|)\s*(--|\.\.)\s*(\|\||o\||o\{|\|\{)\s+(\S+?)(?:\s*:\s*(.*))?$/;
@@ -714,10 +714,23 @@ function scoreRoute(pts,A,B,T){
   }
   return score;
 }
+/* Facing-edge picker shared by Classic & curved modes.
+   Chooses the axis with the clearest open corridor:
+   stacked tables → top↔bottom, side-by-side → left↔right.
+   A loop around a table is only produced when no facing corridor exists.   */
+function pickSidesSimple(A,B){
+  const gr=B.x-(A.x+A.w),gl=A.x-(B.x+B.w),gd=B.y-(A.y+A.h),gu=A.y-(B.y+B.h);
+  const h=Math.max(gr,gl),v=Math.max(gd,gu);
+  if(h>=v)return gr>=gl?["R","L"]:["L","R"];
+  return gd>=gu?["B","T"]:["T","B"];
+}
 function chooseSides(r,A,B,T){
   if(prefs.mode==="classic"){
-    const dx=(B.x+B.w/2)-(A.x+A.w/2);
-    r.sA=dx>=0?"R":"L"; r.sB=dx>=0?"L":"R"; return;
+    // Classic keeps its orthogonal double-elbow STYLE, but it must attach to
+    // the facing edges with the open corridor — never loop around a table
+    // that could be joined directly across the gap.
+    const s=pickSidesSimple(A,B);
+    r.sA=s[0];r.sB=s[1];return;
   }
   const sides=["R","L","B","T"];
   let best=null,bs=Infinity,prevScore=null;
@@ -730,11 +743,6 @@ function chooseSides(r,A,B,T){
   }
   if(prevScore!==null&&prevScore<=bs+30+bs*.05)return;
   if(best){r.sA=best[0];r.sB=best[1];}
-}
-function pickSidesSimple(A,B){
-  const gr=B.x-(A.x+A.w),gl=A.x-(B.x+B.w),gd=B.y-(A.y+A.h),gu=A.y-(B.y+B.h);
-  if(Math.max(gr,gl)>=Math.max(gd,gu))return gr>=gl?["R","L"]:["L","R"];
-  return gd>=gu?["B","T"]:["T","B"];
 }
 function otherTable(it){ return state.tables.get(it.end==="a"?it.r.b:it.r.a); }
 function setPort(it,p){ if(it.end==="a")it.r.pa=p;else it.r.pb=p; }
@@ -809,11 +817,34 @@ function alignPorts(){
     }
   });
 }
+/* Classic — orthogonal double-elbow STYLE, no reverse folds, no needless loops.
+   Side selection already chose the facing corridor (see chooseSides), so the
+   two lead stubs run outward toward each other. When they still face each
+   other (forward >= 0) the classic double-trunk sits strictly BETWEEN them and
+   collapses to a straight line when the ports are aligned. Only when the
+   stubs would cross (tables overlapping) does it detour around the outside. */
 function classicPts(r){
   const a=r.pa,b=r.pb,da=SIDES[r.sA],db=SIDES[r.sB],L=leadLen();
-  const ax=a.x+da.x*L,bx=b.x+db.x*L,my=(a.y+b.y)/2;
-  const m1=ax+(bx-ax)*.35,m2=ax+(bx-ax)*.65;
-  return simplify([a,{x:ax,y:a.y},{x:m1,y:a.y},{x:m1,y:my},{x:m2,y:my},{x:m2,y:b.y},{x:bx,y:b.y},b]);
+  const A=state.tables.get(r.a),B=state.tables.get(r.b);
+  if(!A||!B||!a||!b||!da||!db)return[{x:0,y:0},{x:1,y:0}];
+  if(da.x!==0){
+    const ax=a.x+da.x*L,bx=b.x+db.x*L,forward=(bx-ax)*da.x;
+    if(forward>=0){
+      const m1=ax+(bx-ax)*.35,m2=ax+(bx-ax)*.65,my=(a.y+b.y)/2;
+      return simplify([a,{x:ax,y:a.y},{x:m1,y:a.y},{x:m1,y:my},{x:m2,y:my},{x:m2,y:b.y},{x:bx,y:b.y},b]);
+    }
+    const yt=Math.min(A.y,B.y)-30,yb=Math.max(A.y+A.h,B.y+B.h)+30,my=(a.y+b.y)/2;
+    const Y=Math.abs(my-yt)<Math.abs(my-yb)?yt:yb;
+    return simplify([a,{x:ax,y:a.y},{x:ax,y:Y},{x:bx,y:Y},{x:bx,y:b.y},b]);
+  }
+  const ay=a.y+da.y*L,by=b.y+db.y*L,forward=(by-ay)*da.y;
+  if(forward>=0){
+    const m1=ay+(by-ay)*.35,m2=ay+(by-ay)*.65,mx=(a.x+b.x)/2;
+    return simplify([a,{x:a.x,y:ay},{x:a.x,y:m1},{x:mx,y:m1},{x:mx,y:m2},{x:b.x,y:m2},{x:b.x,y:by},b]);
+  }
+  const xl=Math.min(A.x,B.x)-30,xr=Math.max(A.x+A.w,B.x+B.w)+30,mx=(a.x+b.x)/2;
+  const X=Math.abs(mx-xl)<Math.abs(mx-xr)?xl:xr;
+  return simplify([a,{x:a.x,y:ay},{x:X,y:ay},{x:X,y:by},{x:b.x,y:by},b]);
 }
 function straightRoute(r,A,B){
   const ca={x:A.x+A.w/2,y:A.y+A.h/2},cb={x:B.x+B.w/2,y:B.y+B.h/2};
@@ -858,7 +889,9 @@ function routeAll(){
     else chooseSides(r,A,B,T);
   });
   if(mode!=="straight")assignPorts();
-  if(mode==="smart")alignPorts();
+  // straighten aligned facing ports in BOTH orthogonal modes so a clear
+  // corridor renders as a single straight segment instead of a dogleg/loop
+  if(mode==="smart"||mode==="classic")alignPorts();
   state.rels.forEach(r=>{
     if(mode==="straight")return;
     if(mode==="curved")curvedRoute(r);else buildFinal(r);
@@ -879,8 +912,8 @@ function roundedPath(pts,r){
     const p=pts[i-1],v=pts[i],nx=pts[i+1];
     const l1=dist(p,v),l2=dist(v,nx);
     let rr=Math.min(r,l1/2,l2/2);
-    // keep the marker lead zone straight; the router already reserves
-    // (LEAD + radius) at each port so this never collapses a corner to 0.
+    // keep the marker lead zone straight; the router reserves (LEAD + radius)
+    // at each port so this never collapses a corner to a sharp angle.
     if(i===1)rr=Math.min(rr,Math.max(0,l1-LEAD));
     if(i===n-2)rr=Math.min(rr,Math.max(0,l2-LEAD));
     if(rr<.5){d+=` L${v.x} ${v.y}`;continue;}
@@ -1386,7 +1419,7 @@ bindRange("ctlRadius","radius","outRadius",v=>v+" px");
 bindRange("ctlWidth","width","outWidth",v=>v+" px");
 bindRange("ctlSpread","spread","outSpread",v=>v+" %");
 $("ctlMode").addEventListener("change",e=>{prefs.mode=e.target.value;savePrefs();sndUI();routeAll();
-  toast(prefs.mode==="smart"?"🧠 Smart mode: minimal bends":prefs.mode==="classic"?"🕰 Classic mode (more bends)":"Edge style changed");});
+  toast(prefs.mode==="smart"?"🧠 Smart mode: minimal bends":prefs.mode==="classic"?"🕰 Classic mode (orthogonal elbows)":"Edge style changed");});
 $("ctlColor").addEventListener("input",e=>{prefs.edgeColor=e.target.value;$("outColor").textContent=prefs.edgeColor;savePrefs();scheduleRoute();});
 [["tglGradient","gradient"],["tglMagnet","magnet"],["tglGrid","grid"],["tglMarkers","markers"],["tglFlow","flow"]].forEach(([id,key])=>{
   $(id).addEventListener("change",e=>{prefs[key]=e.target.checked;savePrefs();sndUI();
