@@ -359,7 +359,7 @@ input[type=color]{width:42px;height:28px;border:1px solid var(--line2);border-ra
         <button class="mini" id="btnDice"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="9" cy="15" r="1"/></svg>Shuffle</button>
         <button class="mini" id="btnDefaults"><svg class="ic" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 6"/><path d="M4 16v-6h6"/></svg>Defaults</button>
       </div>
-      <p class="note"><b>Smart</b> mode picks the nearest anchor edge, slides both ports onto a shared axis whenever the table spans overlap, and merges collinear segments — connectors keep 0–2 bends instead of zig-zagging. Drag a table close to alignment and the magnet snaps it onto the axis, wiping out leftover corners.</p>
+      <p class="note"><b>Smart</b> mode picks the nearest anchor edge and merges collinear segments. Every bend uses the <b>same Corner radius</b>, and a bend is never placed on the contact side of a port: the router always swings <b>outward</b> past the marker zone before turning, so a connector can never fold back on itself next to a crow's-foot / circle.</p>
     </section>
   </aside>
 
@@ -462,12 +462,19 @@ erDiagram
 const PALETTE = ["#239dd1","#d444ea","#9625ed","#cc6c23","#7364e8","#4f8dff","#3ddc84","#ffd94a"];
 const UNUSED_HUE = "#c7d3cd";
 const SIDES = {L:{x:-1,y:0}, R:{x:1,y:0}, T:{x:0,y:-1}, B:{x:0,y:1}};
+/* Straight run-out reserved at every port so crow's-foot / circle markers
+   always sit on a straight segment. The router adds the live Corner radius
+   on top of this so EVERY corner (even the ones beside a marker) can use the
+   full, identical radius instead of collapsing to a sharp angle.           */
+const LEAD = 26;
 const CARD_HUMAN = {"||":"1","|o":"0–1","}o":"0–n","}|":"1–n","o|":"0–1","o{":"0–n","|{":"1–n"};
 const REL_RE = /^(\S+)\s+(\|\||\|o|\}o|\}\|)\s*(--|\.\.)\s*(\|\||o\||o\{|\|\{)\s+(\S+?)(?:\s*:\s*(.*))?$/;
 const DEF = {mode:"smart",tol:14,radius:8,width:2,spread:56,edgeColor:"#239dd1",gradient:true,magnet:true,grid:true,markers:true,flow:true,sound:true};
 let prefs = {...DEF};
 try{ const s=localStorage.getItem("erflow-prefs"); if(s) prefs={...DEF,...JSON.parse(s)}; }catch(e){}
 function savePrefs(){ try{localStorage.setItem("erflow-prefs",JSON.stringify(prefs));}catch(e){} }
+/* effective straight lead = marker zone + current corner radius */
+function leadLen(){ return LEAD + (prefs.radius||0); }
 
 /* ═══════════════ UTILS ═══════════════ */
 const $ = id => document.getElementById(id);
@@ -640,43 +647,51 @@ function simplify(pts){
   if(out.length===1)out.push({x:out[0].x+.6,y:out[0].y});
   return out;
 }
+/* Lead-aware orthogonal router.
+   Invariants:
+   • first & last segment >= leadLen() (marker zone + radius) so every corner
+     gets the full identical Corner radius while markers stay on straight line
+   • a bend is NEVER placed between a port and its own lead start on the same
+     axis — that would fold the connector back on itself ("gãy ngược").
+     Perpendicular joins therefore either make one clean outward elbow, or a
+     full outward staircase that approaches the port from the correct side.  */
 function orthoRoute(a,da,b,db,A,B){
-  const S=18;
-  if(da.x!==0&&da.x===-db.x&&da.y===-db.y){
+  const L=leadLen();
+  if(da.x!==0&&da.x===-db.x&&da.y===-db.y){          // facing, horizontal
     if(Math.abs(a.y-b.y)<.6)return[a,b];
     const g=(b.x-a.x)*da.x;
-    if(g>=-1){const mx=(a.x+b.x)/2;return[a,{x:mx,y:a.y},{x:mx,y:b.y},b];}
+    if(g>=2*L){const mx=(a.x+b.x)/2;return[a,{x:mx,y:a.y},{x:mx,y:b.y},b];}
     const yt=Math.min(A.y,B.y)-30,yb=Math.max(A.y+A.h,B.y+B.h)+30,my=(a.y+b.y)/2;
     const Y=Math.abs(my-yt)<Math.abs(my-yb)?yt:yb;
-    const x1=a.x+da.x*S,x2=b.x+db.x*S;
+    const x1=a.x+da.x*L,x2=b.x+db.x*L;
     return[a,{x:x1,y:a.y},{x:x1,y:Y},{x:x2,y:Y},{x:x2,y:b.y},b];
   }
-  if(da.y!==0&&da.y===-db.y&&da.x===-db.x){
+  if(da.y!==0&&da.y===-db.y&&da.x===-db.x){          // facing, vertical
     if(Math.abs(a.x-b.x)<.6)return[a,b];
     const g=(b.y-a.y)*da.y;
-    if(g>=-1){const my=(a.y+b.y)/2;return[a,{x:a.x,y:my},{x:b.x,y:my},b];}
+    if(g>=2*L){const my=(a.y+b.y)/2;return[a,{x:a.x,y:my},{x:b.x,y:my},b];}
     const xl=Math.min(A.x,B.x)-30,xr=Math.max(A.x+A.w,B.x+B.w)+30,mx=(a.x+b.x)/2;
     const X=Math.abs(mx-xl)<Math.abs(mx-xr)?xl:xr;
-    const y1=a.y+da.y*S,y2=b.y+db.y*S;
+    const y1=a.y+da.y*L,y2=b.y+db.y*L;
     return[a,{x:a.x,y:y1},{x:X,y:y1},{x:X,y:y2},{x:b.x,y:y2},b];
   }
-  if(da.x===db.x&&da.y===db.y){
-    if(da.x!==0){const X=(da.x>0?Math.max(a.x,b.x):Math.min(a.x,b.x))+da.x*S;
+  if(da.x===db.x&&da.y===db.y){                       // same side → U route
+    if(da.x!==0){const X=(da.x>0?Math.max(a.x,b.x):Math.min(a.x,b.x))+da.x*L;
       return[a,{x:X,y:a.y},{x:X,y:b.y},b];}
-    const Y=(da.y>0?Math.max(a.y,b.y):Math.min(a.y,b.y))+da.y*S;
+    const Y=(da.y>0?Math.max(a.y,b.y):Math.min(a.y,b.y))+da.y*L;
     return[a,{x:a.x,y:Y},{x:b.x,y:Y},b];
   }
-  if(da.x!==0){
-    const ok1=(b.x-a.x)*da.x>=6, ok2=(a.y-b.y)*db.y>=6;
+  if(da.x!==0){                                       // perpendicular: A horizontal, B vertical
+    const ok1=(b.x-a.x)*da.x>=L, ok2=(a.y-b.y)*db.y>=L;
+    // one clean elbow only when BOTH legs run outward far enough; otherwise a
+    // single corner would sit inside B's lead zone and double back → staircase.
     if(ok1&&ok2)return[a,{x:b.x,y:a.y},b];
-    if(ok1)return[a,{x:b.x,y:a.y},{x:b.x,y:b.y+db.y*S},b];
-    const x1=a.x+da.x*S,y2=b.y+db.y*S;
+    const x1=a.x+da.x*L,y2=b.y+db.y*L;
     return[a,{x:x1,y:a.y},{x:x1,y:y2},{x:b.x,y:y2},b];
-  }else{
-    const ok1=(b.y-a.y)*da.y>=6, ok2=(a.x-b.x)*db.x>=6;
+  }else{                                              // A vertical, B horizontal
+    const ok1=(b.y-a.y)*da.y>=L, ok2=(a.x-b.x)*db.x>=L;
     if(ok1&&ok2)return[a,{x:a.x,y:b.y},b];
-    if(ok1)return[a,{x:a.x,y:b.y},{x:b.x+db.x*S,y:b.y},b];
-    const y1=a.y+da.y*S,x2=b.x+db.x*S;
+    const y1=a.y+da.y*L,x2=b.x+db.x*L;
     return[a,{x:a.x,y:y1},{x:x2,y:y1},{x:x2,y:b.y},b];
   }
 }
@@ -795,8 +810,8 @@ function alignPorts(){
   });
 }
 function classicPts(r){
-  const a=r.pa,b=r.pb,da=SIDES[r.sA],db=SIDES[r.sB],S=18;
-  const ax=a.x+da.x*S,bx=b.x+db.x*S,my=(a.y+b.y)/2;
+  const a=r.pa,b=r.pb,da=SIDES[r.sA],db=SIDES[r.sB],L=leadLen();
+  const ax=a.x+da.x*L,bx=b.x+db.x*L,my=(a.y+b.y)/2;
   const m1=ax+(bx-ax)*.35,m2=ax+(bx-ax)*.65;
   return simplify([a,{x:ax,y:a.y},{x:m1,y:a.y},{x:m1,y:my},{x:m2,y:my},{x:m2,y:b.y},{x:bx,y:b.y},b]);
 }
@@ -820,11 +835,13 @@ function buildFinal(r){
   else pts=simplify(orthoRoute(r.pa,SIDES[r.sA],r.pb,SIDES[r.sB],A,B));
   r.pts=pts;r.bends=Math.max(0,pts.length-2);r.curve=null;
 }
+/* Smooth-curve mode also keeps straight lead-in / lead-out at both ports */
 function curvedRoute(r){
   const a=r.pa,b=r.pb,da=SIDES[r.sA],db=SIDES[r.sB];
   if(!a||!b||!da||!db){r.pts=[{x:0,y:0},{x:1,y:0}];r.curve=null;r.bends=0;return;}
-  const k=clamp(dist(a,b)*.4,40,160);
-  r.curve={a,da,b,db,c1:{x:a.x+da.x*k,y:a.y+da.y*k},c2:{x:b.x+db.x*k,y:b.y+db.y*k}};
+  const a2={x:a.x+da.x*LEAD,y:a.y+da.y*LEAD},b2={x:b.x+db.x*LEAD,y:b.y+db.y*LEAD};
+  const k=clamp(dist(a2,b2)*.4,40,160);
+  r.curve={a,b,a2,b2,da,db,c1:{x:a2.x+da.x*k,y:a2.y+da.y*k},c2:{x:b2.x+db.x*k,y:b2.y+db.y*k}};
   r.pts=[a,b];r.bends=0;
 }
 function routeAll(){
@@ -856,25 +873,31 @@ function scheduleRoute(){ if(!routeRaf)routeRaf=requestAnimationFrame(()=>{route
 function roundedPath(pts,r){
   if(!pts||pts.length<2)return"";
   if(pts.length===2||r<.5)return"M"+pts.map(p=>p.x+" "+p.y).join(" L");
+  const n=pts.length;
   let d=`M${pts[0].x} ${pts[0].y}`;
-  for(let i=1;i<pts.length-1;i++){
-    const p=pts[i-1],v=pts[i],n=pts[i+1];
-    const l1=dist(p,v),l2=dist(v,n),rr=Math.min(r,l1/2,l2/2);
+  for(let i=1;i<n-1;i++){
+    const p=pts[i-1],v=pts[i],nx=pts[i+1];
+    const l1=dist(p,v),l2=dist(v,nx);
+    let rr=Math.min(r,l1/2,l2/2);
+    // keep the marker lead zone straight; the router already reserves
+    // (LEAD + radius) at each port so this never collapses a corner to 0.
+    if(i===1)rr=Math.min(rr,Math.max(0,l1-LEAD));
+    if(i===n-2)rr=Math.min(rr,Math.max(0,l2-LEAD));
     if(rr<.5){d+=` L${v.x} ${v.y}`;continue;}
-    const iu={x:(v.x-p.x)/l1,y:(v.y-p.y)/l1},ou={x:(n.x-v.x)/l2,y:(n.y-v.y)/l2};
+    const iu={x:(v.x-p.x)/l1,y:(v.y-p.y)/l1},ou={x:(nx.x-v.x)/l2,y:(nx.y-v.y)/l2};
     d+=` L${v.x-iu.x*rr} ${v.y-iu.y*rr} Q${v.x} ${v.y} ${v.x+ou.x*rr} ${v.y+ou.y*rr}`;
   }
-  const e=pts[pts.length-1];
+  const e=pts[n-1];
   return d+` L${e.x} ${e.y}`;
 }
 function pathD(r){
   if(r.curve){const c=r.curve;
-    return`M${c.a.x} ${c.a.y} C${c.c1.x} ${c.c1.y} ${c.c2.x} ${c.c2.y} ${c.b.x} ${c.b.y}`;}
+    return`M${c.a.x} ${c.a.y} L${c.a2.x} ${c.a2.y} C${c.c1.x} ${c.c1.y} ${c.c2.x} ${c.c2.y} ${c.b2.x} ${c.b2.y} L${c.b.x} ${c.b.y}`;}
   return roundedPath(r.pts,prefs.radius);
 }
 function midOf(r){
   if(r.curve){const c=r.curve;
-    return{x:(c.a.x+3*c.c1.x+3*c.c2.x+c.b.x)/8,y:(c.a.y+3*c.c1.y+3*c.c2.y+c.b.y)/8};}
+    return{x:(c.a2.x+3*c.c1.x+3*c.c2.x+c.b2.x)/8,y:(c.a2.y+3*c.c1.y+3*c.c2.y+c.b2.y)/8};}
   const pts=r.pts||[];
   if(!pts.length)return{x:0,y:0};
   if(pts.length===1)return pts[0];
@@ -1019,7 +1042,8 @@ function updateEdgeEls(){
       e.lab.setAttribute("transform",`translate(${m.x},${m.y})`);
     }else{e.lab.style.display="none";e.labKey=null;}
     r.pts.forEach(p=>eat(p.x,p.y));
-    if(r.curve){eat(r.curve.c1.x,r.curve.c1.y);eat(r.curve.c2.x,r.curve.c2.y);}
+    if(r.curve){eat(r.curve.a2.x,r.curve.a2.y);eat(r.curve.b2.x,r.curve.b2.y);
+      eat(r.curve.c1.x,r.curve.c1.y);eat(r.curve.c2.x,r.curve.c2.y);}
   });
 }
 function updateStats(){
